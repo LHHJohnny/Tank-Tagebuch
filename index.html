@@ -12,12 +12,10 @@ h1{font-size:22px;margin:0 0 6px}
 #status.ok{display:block;background:#d4edda;color:#155724;border:1px solid #a3d9a3}
 #status.err{display:block;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
 #status.info{display:block;background:#d6eaf8;color:#1a5276;border:1px solid #aed6f1}
-.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bar{margin-bottom:12px}
 button{padding:10px 14px;border:1px solid #bbb;background:#fff;border-radius:8px;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 button.primary{background:#007aff;color:#fff;border-color:#007aff}
-button.danger{color:#c0392b;border-color:#c0392b}
 button:active{opacity:.7}
-button:disabled{opacity:.4}
 #vehicleTabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .vtab{padding:10px 15px;border:1px solid #bbb;border-radius:8px;background:#fff;font-size:14px}
 .vtab.active{background:#007aff;color:#fff;border-color:#007aff}
@@ -44,8 +42,8 @@ input,select{width:100%;padding:11px;margin-top:4px;border:1px solid #ccc;border
 .actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end}
 .actions button{flex:1}
 .empty{text-align:center;color:#999;padding:40px 10px;font-size:15px}
-.footer{margin-top:20px;padding-top:12px;border-top:1px solid #ddd;text-align:center;font-size:13px}
-.footer a{color:#007aff;text-decoration:none;font-size:13px}
+.footer{margin-top:24px;padding-top:12px;border-top:1px solid #ddd;text-align:center}
+.footer a{color:#888;text-decoration:none;font-size:13px}
 </style>
 </head>
 <body>
@@ -64,10 +62,10 @@ input,select{width:100%;padding:11px;margin-top:4px;border:1px solid #ccc;border
   <a href="#" id="btnAddVeh">+ Fahrzeug anlegen</a>
 </div>
 
-<!-- Fahrzeug-Dialog -->
+<!-- Fahrzeug-Dialog (nur Anlegen) -->
 <div class="modal" id="mVeh">
   <div class="card">
-    <h2 id="vehTitle">Neues Fahrzeug</h2>
+    <h2>Neues Fahrzeug</h2>
     <label>Name</label>
     <input id="vName" placeholder="z. B. Mein Auto">
     <div class="row2">
@@ -83,20 +81,7 @@ input,select{width:100%;padding:11px;margin-top:4px;border:1px solid #ccc;border
     <label>Kilometerstand (km)</label>
     <input id="vKm" type="number" min="0" step="1">
     <div class="actions">
-      <button id="vCancel">Abbrechen</button>
-      <button class="primary" id="vSave">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- Tankbeleg-Dialog -->
-<div class="modal" id="mBeleg">
-  <div class="card">
-    <h2 id="belegTitle">Neuer Tankbeleg</h2>
-    <label>Datum</label>
-    <input id="bDatum" type="date">
-    <div class="row2">
-      <div><label id="bMengeLabel">Tankmenge (l)</label><input id="bMenge" type="number" min="0" step="0.01"></div>
+      ">Tankmenge (l)</label><input id="bMenge" type="number" min="0" step="0.01"></div>
       <div><label id="bPreisLabel">Preis je Liter (€)</label><input id="bPreis" type="number" min="0" step="0.001"></div>
     </div>
     <label>Kilometerstand (km)</label>
@@ -126,349 +111,4 @@ input,select{width:100%;padding:11px;margin-top:4px;border:1px solid #ccc;border
 var SUPABASE_URL = "https://jfgkghilikuhjijfvnjc.supabase.co";
 var SUPABASE_KEY = "sb_publishable_3kHpVg2NKf3MROQgYuIYjg_WMcg4h8l";
 
-var sb;
-try {
-  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-} catch(e) {
-  var el = document.getElementById("status");
-  el.className = "err";
-  el.textContent = "Supabase nicht erreichbar: " + e.message;
-  el.style.display = "block";
-  throw e;
-}
-
-var vehicles = [];
-var activeVehId = null;
-var editVehId = null;
-var editBelegId = null;
-
-function $(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0,10); }
-function fmt(n, d) {
-  if (d === undefined) d = 2;
-  if (n == null || isNaN(n)) return "\u2013";
-  return Number(n).toFixed(d);
-}
-function fuelUnit(f) { return f === "elektro" ? "kWh" : "l"; }
-
-function setStatus(msg, type) {
-  var el = $("status");
-  if (!msg) { el.style.display = "none"; el.textContent = ""; return; }
-  el.textContent = msg;
-  el.className = type || "info";
-  el.style.display = "block";
-}
-
-// ── Berechnung ──
-function compute(belege) {
-  var sorted = belege.slice().sort(function(a,b){ return a.km - b.km || (a.datum||"").localeCompare(b.datum||""); });
-  var lastFullKm = null, accM = 0, accC = 0, totM = 0, totD = 0, totC = 0;
-  var info = {};
-  for (var i = 0; i < sorted.length; i++) {
-    var b = sorted[i];
-    var diffKm = i > 0 ? b.km - sorted[i-1].km : null;
-    var verbrauch = null, kosten100 = null;
-    if (b.voll) {
-      if (lastFullKm !== null) {
-        var dist = b.km - lastFullKm;
-        if (dist > 0) {
-          var m = accM + b.menge;
-          var c = accC + b.menge * b.preis;
-          verbrauch = m / dist * 100;
-          kosten100 = c / dist * 100;
-          totM += m; totD += dist; totC += c;
-        }
-      }
-      accM = 0; accC = 0; lastFullKm = b.km;
-    } else {
-      accM += b.menge; accC += b.menge * b.preis;
-    }
-    info[b.id] = { diffKm: diffKm, verbrauch: verbrauch, kosten100: kosten100 };
-  }
-  return {
-    sorted: sorted, info: info,
-    avg: totD > 0 ? totM / totD * 100 : null,
-    avgK: totD > 0 ? totC / totD * 100 : null
-  };
-}
-
-// ── Rendering ──
-function renderAll() {
-  var tc = $("vehicleTabs");
-  tc.innerHTML = "";
-  vehicles.forEach(function(v) {
-    var btn = document.createElement("button");
-    btn.className = "vtab" + (v.id === activeVehId ? " active" : "");
-    btn.textContent = v.name + (v.kenner ? " \u00b7 " + v.kenner : "");
-    var vehId = v.id;
-    btn.onclick = function() {
-      activeVehId = vehId;
-      renderAll();
-    };
-    tc.appendChild(btn);
-  });
-
-  var v = null;
-  for (var i = 0; i < vehicles.length; i++) {
-    if (vehicles[i].id === activeVehId) { v = vehicles[i]; break; }
-  }
-
-  var main = $("main");
-  if (!v) {
-    main.innerHTML = '<div class="empty">Kein Fahrzeug vorhanden.<br>Bitte unten \u201e+ Fahrzeug anlegen\u201c tappen.</div>';
-    return;
-  }
-
-  var r = compute(v.belege || []);
-  var unit = fuelUnit(v.fuel);
-  var lastKm = v.km || 0;
-  if (v.belege && v.belege.length) {
-    lastKm = Math.max.apply(null, v.belege.map(function(b){ return b.km; }));
-  }
-
-  var h = '<div class="stats">';
-  h += '<div class="stat"><b>' + fmt(r.avg) + ' ' + unit + '/100</b><span>\u00d6 Verbrauch</span></div>';
-  h += '<div class="stat"><b>' + fmt(r.avgK) + ' \u20ac</b><span>\u00d6 Kosten/100 km</span></div>';
-  h += '<div class="stat"><b>' + lastKm.toLocaleString("de-DE") + ' km</b><span>Letzter Stand</span></div>';
-  h += '<div class="stat"><b>' + v.fuel + '</b><span>Kraftstoff</span></div>';
-  h += '</div>';
-
-  h += '<table><thead><tr><th>Datum</th><th>km</th><th>\u0394km</th><th>Menge</th><th>\u20ac/Ein</th><th>Art</th><th>R\u00e4der</th><th>' + unit + '/100</th><th>\u20ac/100</th><th></th></tr></thead><tbody>';
-  if (!r.sorted.length) h += '<tr><td colspan="10" class="empty">Noch keine Eintr\u00e4ge.</td></tr>';
-
-  var rev = r.sorted.slice().reverse();
-  for (var j = 0; j < rev.length; j++) {
-    var b = rev[j];
-    var c = r.info[b.id];
-    h += '<tr>';
-    h += '<td class="l">' + b.datum + '</td>';
-    h += '<td>' + b.km.toLocaleString("de-DE") + '</td>';
-    h += '<td>' + (c.diffKm != null ? c.diffKm.toLocaleString("de-DE") : "\u2013") + '</td>';
-    h += '<td>' + fmt(b.menge) + ' ' + unit + '</td>';
-    h += '<td>' + fmt(b.preis, 3) + '</td>';
-    h += '<td>' + (b.voll ? '<span class="badge full">Voll</span>' : '<span class="badge part">Teil</span>') + '</td>';
-    h += '<td>' + (b.radae === "sommer" ? '<span class="badge summer">Sommer</span>' : '<span class="badge winter">Winter</span>') + '</td>';
-    h += '<td>' + fmt(c.verbrauch) + '</td>';
-    h += '<td>' + fmt(c.kosten100) + '</td>';
-    h += '<td class="l"><button data-eb="' + b.id + '">\u270f\ufe0f</button> <button data-dlb="' + b.id + '">\U0001f5d1</button></td>';
-    h += '</tr>';
-  }
-  h += '</tbody></table>';
-  h += '<div style="margin-top:12px;text-align:right">';
-  h += '<button id="btnEditVeh" style="font-size:13px">\u270f\ufe0f Fahrzeug \u00e4ndern</button> ';
-  h += '<button class="danger" id="btnDelVeh" style="font-size:13px">\U0001f5d1 Fahrzeug l\u00f6schen</button>';
-  h += '</div>';
-  main.innerHTML = h;
-
-  // Events
-  var allEb = main.querySelectorAll("[data-eb]");
-  for (var k = 0; k < allEb.length; k++) {
-    (function(el) {
-      el.onclick = function() { openBeleg(v, el.getAttribute("data-eb")); };
-    })(allEb[k]);
-  }
-  var allDlb = main.querySelectorAll("[data-dlb]");
-  for (var m2 = 0; m2 < allDlb.length; m2++) {
-    (function(el) {
-      el.onclick = function() {
-        if (!confirm("Diesen Tankbeleg wirklich l\u00f6schen?")) return;
-        var delId = el.getAttribute("data-dlb");
-        sb.from("belege").delete().eq("id", delId).then(function(res) {
-          if (res.error) setStatus("L\u00f6schen fehlgeschlagen: " + res.error.message, "err");
-          else loadAll();
-        });
-      };
-    })(allDlb[m2]);
-  }
-  var bEV = $("btnEditVeh");
-  if (bEV) bEV.onclick = function() { openVehicle(v.id); };
-  var bDV = $("btnDelVeh");
-  if (bDV) bDV.onclick = function() {
-    if (!confirm("Fahrzeug und alle Belege l\u00f6schen?")) return;
-    var delVehId = v.id;
-    sb.from("fahrzeuge").delete().eq("id", delVehId).then(function(res) {
-      if (res.error) setStatus("L\u00f6schen fehlgeschlagen: " + res.error.message, "err");
-      else { activeVehId = null; loadAll(); }
-    });
-  };
-}
-
-// ── Daten laden ──
-function loadAll() {
-  setStatus("Lade Daten\u2026", "info");
-  sb.from("fahrzeuge").select("*").order("created_at").then(function(vs) {
-    if (vs.error) { setStatus("Fehler (Fahrzeuge): " + vs.error.message, "err"); return; }
-    vehicles = vs.data || [];
-    if (!vehicles.length) {
-      setStatus("Noch keine Fahrzeuge. Bitte unten anlegen.", "info");
-      renderAll();
-      return;
-    }
-    var chain = Promise.resolve();
-    vehicles.forEach(function(v) {
-      chain = chain.then(function() {
-        return sb.from("belege").select("*").eq("fahrzeug_id", v.id).then(function(res) {
-          if (res.error) throw new Error("Belege f\u00fcr " + v.name + ": " + res.error.message);
-          v.belege = res.data || [];
-        });
-      });
-    });
-    chain.then(function() {
-      if (!vehicles.some(function(x) { return x.id === activeVehId; })) {
-        activeVehId = vehicles[0].id;
-      }
-      setStatus("", "");
-      renderAll();
-    }).catch(function(e) {
-      setStatus("Fehler: " + e.message, "err");
-    });
-  });
-}
-
-// ── Fahrzeug ──
-function openVehicle(id) {
-  editVehId = id || null;
-  var v = null;
-  if (id) {
-    for (var i = 0; i < vehicles.length; i++) {
-      if (vehicles[i].id === id) { v = vehicles[i]; break; }
-    }
-  }
-  $("vehTitle").textContent = v ? "Fahrzeug \u00e4ndern" : "Neues Fahrzeug";
-  $("vName").value = v ? v.name : "";
-  $("vKenner").value = v ? v.kenner : "";
-  $("vFuel").value = v ? v.fuel : "benzin";
-  $("vKm").value = v ? v.km : "";
-  $("mVeh").classList.add("open");
-}
-
-$("btnAddVeh").onclick = function(e) { e.preventDefault(); openVehicle(null); };
-$("vCancel").onclick = function() { $("mVeh").classList.remove("open"); };
-$("vSave").onclick = function() {
-  var p = {
-    name: $("vName").value.trim(),
-    kenner: $("vKenner").value.trim(),
-    fuel: $("vFuel").value,
-    km: Number($("vKm").value) || 0
-  };
-  if (!p.name) { alert("Name ist Pflicht."); return; }
-  if (editVehId) {
-    if (!confirm("Fahrzeug-Daten wirklich \u00e4ndern?")) return;
-    sb.from("fahrzeuge").update(p).eq("id", editVehId).then(function(res) {
-      if (res.error) { setStatus("Fehler: " + res.error.message, "err"); return; }
-      $("mVeh").classList.remove("open");
-      loadAll();
-    });
-  } else {
-    sb.from("fahrzeuge").insert(p).select().single().then(function(res) {
-      if (res.error) { setStatus("Fehler: " + res.error.message, "err"); return; }
-      activeVehId = res.data.id;
-      $("mVeh").classList.remove("open");
-      loadAll();
-    });
-  }
-};
-
-// ── Tankbeleg ──
-function lastTire(v) {
-  if (!v.belege || !v.belege.length) return "sommer";
-  var s = v.belege.slice().sort(function(a,b) { return b.km - a.km || (b.datum||"").localeCompare(a.datum||""); });
-  return s[0].radae;
-}
-
-function openBeleg(v, id) {
-  if (!v) {
-    setStatus("Kein Fahrzeug aktiv. Bitte zuerst ein Fahrzeug w\u00e4hlen.", "err");
-    return;
-  }
-  editBelegId = id || null;
-  var b = null;
-  if (id && v.belege) {
-    for (var i = 0; i < v.belege.length; i++) {
-      if (v.belege[i].id === id) { b = v.belege[i]; break; }
-    }
-  }
-  var unit = fuelUnit(v.fuel);
-  $("belegTitle").textContent = b ? "Beleg \u00e4ndern" : "Neuer Tankbeleg";
-  $("bMengeLabel").textContent = "Tankmenge (" + unit + ")";
-  $("bPreisLabel").textContent = "Preis je " + (unit === "l" ? "Liter" : "kWh") + " (\u20ac)";
-  $("bDatum").value = b ? b.datum : today();
-  $("bMenge").value = b ? b.menge : "";
-  $("bPreis").value = b ? b.preis : "";
-  $("bKm").value = b ? b.km : String(v.km || "");
-  $("bVoll").value = b ? String(b.voll) : "true";
-  $("bRadae").value = b ? b.radae : lastTire(v);
-  $("mBeleg").classList.add("open");
-}
-
-$("btnAddBeleg").onclick = function() {
-  var v = null;
-  for (var i = 0; i < vehicles.length; i++) {
-    if (vehicles[i].id === activeVehId) { v = vehicles[i]; break; }
-  }
-  if (!v) {
-    if (!vehicles.length) {
-      setStatus("Kein Fahrzeug vorhanden. Bitte unten \u201e+ Fahrzeug anlegen\u201c tappen.", "err");
-    } else {
-      activeVehId = vehicles[0].id;
-      renderAll();
-      openBeleg(vehicles[0], null);
-    }
-    return;
-  }
-  openBeleg(v, null);
-};
-
-$("bCancel").onclick = function() { $("mBeleg").classList.remove("open"); };
-$("bSave").onclick = function() {
-  var v = null;
-  for (var i = 0; i < vehicles.length; i++) {
-    if (vehicles[i].id === activeVehId) { v = vehicles[i]; break; }
-  }
-  if (!v) { setStatus("Kein Fahrzeug aktiv.", "err"); return; }
-
-  var p = {
-    fahrzeug_id: activeVehId,
-    datum: $("bDatum").value || today(),
-    menge: Number($("bMenge").value) || 0,
-    preis: Number($("bPreis").value) || 0,
-    km: Number($("bKm").value) || 0,
-    voll: $("bVoll").value === "true",
-    radae: $("bRadae").value
-  };
-  if (!p.km) { alert("Bitte Kilometerstand angeben."); return; }
-
-  if (editBelegId) {
-    if (!confirm("Tankbeleg wirklich \u00e4ndern?")) return;
-    sb.from("belege").update(p).eq("id", editBelegId).then(function(res) {
-      if (res.error) { setStatus("Fehler (Beleg \u00e4ndern): " + res.error.message, "err"); return; }
-      $("mBeleg").classList.remove("open");
-      loadAll();
-    });
-  } else {
-    sb.from("belege").insert(p).then(function(res) {
-      if (res.error) { setStatus("Fehler (Beleg speichern): " + res.error.message, "err"); return; }
-      if (p.km > (v.km || 0)) {
-        sb.from("fahrzeuge").update({ km: p.km }).eq("id", activeVehId);
-      }
-      $("mBeleg").classList.remove("open");
-      loadAll();
-    });
-  }
-};
-
-// Modal schließen
-var modals = document.querySelectorAll(".modal");
-for (var mi = 0; mi < modals.length; mi++) {
-  (function(m) {
-    m.addEventListener("click", function(e) {
-      if (e.target === m) m.classList.remove("open");
-    });
-  })(modals[mi]);
-}
-
-// Start
-loadAll();
-</script>
-</body>
-</html>
+var sb
