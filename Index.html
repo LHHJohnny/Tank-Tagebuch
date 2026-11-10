@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tankbuch</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,Arial,sans-serif;max-width:900px;margin:0 auto;padding:14px;background:#f5f5f5;color:#222}
+h1{font-size:22px;margin:0 0 14px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{padding:10px 14px;border:1px solid #bbb;background:#fff;border-radius:8px;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.primary{background:#007aff;color:#fff;border-color:#007aff}
+button.danger{color:#c0392b;border-color:#c0392b}
+button:active{opacity:.7}
+#vehicleTabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.vtab{padding:10px 15px;border:1px solid #bbb;border-radius:8px;background:#fff;font-size:14px}
+.vtab.active{background:#007aff;color:#fff;border-color:#007aff}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0} .stat{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;flex:1;min-width:130px}
+.stat b{display:block;font-size:18px;color:#007aff;margin-bottom:2px}
+.stat span{font-size:11px;color:#888}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+th,td{border:1px solid #ddd;padding:7px 6px;text-align:right} th{background:#f0f0f0;text-align:center;position:sticky;top:0}
+td.l{text-align:left}
+.badge{font-size:10px;padding:2px 6px;border-radius:10px;display:inline-block}
+.badge.full{background:#d4edda;color:#155724}
+.badge.part{background:#fff3cd;color:#856404}
+.badge.summer{background:#fff3cd}
+.badge.winter{background:#d6eaf8}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.modal.open{display:flex}
+.card{background:#fff;border-radius:16px 16px 0 0;padding:20px 18px 28px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+.card h2{font-size:17px;margin:0 0 8px}
+label{display:block;font-size:13px;margin-top:12px;color:#444;font-weight:600}
+input,select{width:100%;padding:11px;margin-top:4px;border:1px solid #ccc;border-radius:8px;font-size:16px;background:#fff}
+.row2{display:flex;gap:10px}.row2>div{flex:1}
+.actions{display:flex;gap:10px;margin-top:22px;justify-content:flex-end}
+.actions button{flex:1}
+.empty{text-align:center;color:#999;padding:40px 10px;font-size:15px} </style> </head> <body>
+
+<h1>🚗 Tankbuch</h1>
+
+<div class="bar">
+  <button class="primary" id="btnAddVeh">+ Fahrzeug</button>
+  <button class="primary" id="btnAddBeleg" disabled>Neuer Tankbeleg</button> </div>
+
+<div id="vehicleTabs"></div>
+<div id="main"></div>
+
+<!-- Fahrzeug-Dialog -->
+<div class="modal" id="mVeh">
+  <div class="card">
+    <h2 id="vehTitle">Neues Fahrzeug</h2>
+    <label>Name</label>
+    <input id="vName" placeholder="z. B. Mein Auto">
+    <div class="row2">
+      <div><label>Kennzeichen</label><input id="vKenner" placeholder="ABC-123"></div>
+      <div><label>Kraftstoffart</label>
+        <select id="vFuel">
+          <option value="benzin">Benzin</option>
+          <option value="diesel">Diesel</option>
+          <option value="elektro">Elektro</option>
+        </select>
+      </div>
+    </div>
+    <label>Kilometerstand (km)</label>
+    <input id="vKm" type="number" min="0" step="1">
+    <div class="actions">
+      <button id="vCancel">Abbrechen</button>
+      <button class="primary" id="vSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tankbeleg-Dialog -->
+<div class="modal" id="mBeleg">
+  <div class="card">
+    <h2 id="belegTitle">Neuer Tankbeleg</h2>
+    <label>Datum</label>
+    <input id="bDatum" type="date">
+    <div class="row2">
+      <div><label id="bMengeLabel">Tankmenge (l)</label><input id="bMenge" type="number" min="0" step="0.01"></div>
+      <div><label id="bPreisLabel">Preis je Liter (€)</label><input id="bPreis" type="number" min="0" step="0.001"></div>
+    </div>
+    <label>Kilometerstand (km)</label>
+    <input id="bKm" type="number" min="0" step="1">
+    <label>Tankart</label>
+    <select id="bVoll">
+      <option value="true">Volltankung</option>
+      <option value="false">Teilkentung</option>
+    </select>
+    <label>Räder</label>
+    <select id="bRadae">
+      <option value="sommer">Sommerreifen</option>
+      <option value="winter">Winterreifen</option>
+    </select>
+    <div class="actions">
+      <button id="bCancel">Abbrechen</button>
+      <button class="primary" id="bSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// ═══════════════════════════════════════════════════════
+// KONFIGURATION
+// ═══════════════════════════════════════════════════════
+const SUPABASE_URL = "https://jfgkghilikuhjijfvnjc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_3kHpVg2NKf3MROQgYuIYjg_WMcg4h8l";
+// ═══════════════════════════════════════════════════════
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let vehicles = [];
+let activeVehId = null;
+let editVehId = null;
+let editBelegId = null;
+
+const $ = id => document.getElementById(id); const today = () => new Date().toISOString().slice(0,10); const fmt = (n, d=2) => (n==null||isNaN(n)) ? "–" : Number(n).toFixed(d); const fuelUnit = f => f==="elektro" ? "kWh" : "l";
+
+// ─── Berechnung: Volltank-Intervalle + Teilkentungen ─── function compute(belege){
+  const sorted = [...belege].sort((a,b)=> a.km-b.km || (a.datum||"").localeCompare(b.datum||""));
+  let lastFullKm=null, accM=0, accC=0, totM=0, totD=0, totC=0;
+  const info = new Map();
+  for(let i=0;i<sorted.length;i++){
+    const b=sorted[i];
+    const diffKm = i>0 ? b.km - sorted[i-1].km : null;
+    let verbrauch=null, kosten100=null;
+    if(b.voll){
+      if(lastFullKm!==null){
+        const dist=b.km-lastFullKm;
+        const m=accM+b.menge;
+        const c=accC+b.menge*b.preis;
+        if(dist>0){
+          verbrauch=m/dist*100;
+          kosten100=c/dist*100;
+          totM+=m; totD+=dist; totC+=c;
+        }
+      }
+      accM=0; accC=0; lastFullKm=b.km;
+    } else {
+      accM+=b.menge; accC+=b.menge*b.preis;
+    }
+    info.set(b.id,{diffKm,verbrauch,kosten100});
+  }
+  return {sorted, info,
+    avg: totD>0? totM/totD*100 : null,
+    avgK: totD>0? totC/totD*100 : null}; }
+
+// ─── Rendering ───
+function renderTabs(){
+  const c=$("vehicleTabs"); c.innerHTML="";
+  vehicles.forEach(v=>{
+    const b=document.createElement("button");
+    b.className="vtab"+(v.id===activeVehId?" active":"");
+    b.textContent=v.name+(v.kenner?" · "+v.kenner:"");
+    b.onclick=()=>{activeVehId=v.id;renderAll();};
+    c.appendChild(b);
+  });
+}
+
+function renderAll(){
+  renderTabs();
+  $("btnAddBeleg").disabled=!activeVehId;
+  const v=vehicles.find(x=>x.id===activeVehId);
+  const main=$("main");
+  if(!v){main.innerHTML='<div class="empty">Bitte Fahrzeug wählen oder anlegen.</div>';return;}
+  const r=compute(v.belege);
+  const unit=fuelUnit(v.fuel);
+  const lastKm=v.belege.length?Math.max(...v.belege.map(b=>b.km)):v.km;
+
+  let h=`<div class="stats">
+    <div class="stat"><b>${fmt(r.avg)} ${unit}/100</b><span>Ø Verbrauch</span></div>
+    <div class="stat"><b>${fmt(r.avgK)} €</b><span>Ø Kosten/100 km</span></div>
+    <div class="stat"><b>${lastKm.toLocaleString("de-DE")} km</b><span>Letzter Stand</span></div>
+    <div class="stat"><b>${v.fuel}</b><span>Kraftstoff</span></div>
+  </div>`;
+
+  h+=`<table><thead><tr>
+    <th>Datum</th><th>km</th><th>Δkm</th><th>Menge</th><th>€/Einheit</th><th>Art</th><th>Räder</th><th>${unit}/100km</th><th>€/100km</th><th></th>
+  </tr></thead><tbody>`;
+  if(!r.sorted.length) h+=`<tr><td colspan="10" class="empty">Noch keine Einträge.</td></tr>`;
+  [...r.sorted].reverse().forEach(b=>{
+    const c=r.info.get(b.id);
+    h+=`<tr>
+      <td class="l">${b.datum}</td>
+      <td>${b.km.toLocaleString("de-DE")}</td>
+      <td>${c.diffKm!=null?c.diffKm.toLocaleString("de-DE"):"–"}</td>
+      <td>${fmt(b.menge)} ${unit}</td>
+      <td>${fmt(b.preis,3)}</td>
+      <td>${b.voll?'<span class="badge full">Voll</span>':'<span class="badge part">Teil</span>'}</td>
+      <td>${b.radae==="sommer"?'<span class="badge summer">Sommer</span>':'<span class="badge winter">Winter</span>'}</td>
+      <td>${fmt(c.verbrauch)}</td>
+      <td>${fmt(c.kosten100)}</td>
+      <td class="l">
+        <button data-eb="${b.id}" title="Ändern">✏️</button>
+        <button data-dlb="${b.id}" title="Löschen">🗑️</button>
+      </td>
+    </tr>`;
+  });
+  h+=`</tbody></table>`;
+  h+=`<div style="margin-top:10px;text-align:right">
+    <button data-ev="${v.id}" style="font-size:13px">✏️ Fahrzeug ändern</button>
+    <button class="danger" data-dv="${v.id}" style="font-size:13px">🗑️ Fahrzeug löschen</button>
+  </div>`;
+  main.innerHTML=h;
+
+  main.querySelectorAll("[data-eb]").forEach(el=>el.onclick=()=>openBeleg(v,el.dataset.eb));
+  main.querySelectorAll("[data-dlb]").forEach(el=>el.onclick=async()=>{
+    if(!confirm("Diesen Tankbeleg wirklich löschen?"))return;
+    await sb.from("belege").delete().eq("id",el.dataset.dlb);
+    await refresh();
+  });
+  main.querySelectorAll("[data-ev]").forEach(el=>el.onclick=()=>openVehicle(el.dataset.ev));
+  main.querySelectorAll("[data-dv]").forEach(el=>el.onclick=async()=>{
+    if(!confirm("Fahrzeug und alle zugehörigen Tankbelege löschen?"))return;
+    await sb.from("fahrzeuge").delete().eq("id",el.dataset.dv);
+    activeVehId=null;
+    await refresh();
+  });
+}
+
+// ─── Daten laden ───
+async function loadAll(){
+  const {data:vs,error:ve}=await sb.from("fahrzeuge").select("*").order("created_at");
+  if(ve){console.error("Fahrzeuge:",ve.message);return;}
+  vehicles=vs||[];
+  for(const v of vehicles){
+    const {data:bs}=await sb.from("belege").select("*").eq("fahrzeug_id",v.id);
+    v.belege=bs||[];
+  }
+  if(vehicles.length&&!vehicles.find(x=>x.id===activeVehId)) activeVehId=vehicles[0].id;
+  renderAll();
+}
+const refresh=loadAll;
+
+// ─── Fahrzeug anlegen / ändern ───
+function openVehicle(id=null){
+  editVehId=id;
+  const v=id?vehicles.find(x=>x.id===id):null;
+  $("vehTitle").textContent=v?"Fahrzeug ändern":"Neues Fahrzeug";
+  $("vName").value=v?v.name:"";
+  $("vKenner").value=v?v.kenner:"";
+  $("vFuel").value=v?v.fuel:"benzin";
+  $("vKm").value=v?v.km:"";
+  $("mVeh").classList.add("open");
+}
+$("btnAddVeh").onclick=()=>openVehicle();
+$("vCancel").onclick=()=>$("mVeh").classList.remove("open");
+$("vSave").onclick=async()=>{
+  const p={name:$("vName").value.trim(),kenner:$("vKenner").value.trim(),
+           fuel:$("vFuel").value,km:Number($("vKm").value)||0};
+  if(!p.name)return alert("Name ist Pflicht.");
+  if(editVehId){
+    if(!confirm("Fahrzeug-Daten wirklich ändern?"))return;
+    await sb.from("fahrzeuge").update(p).eq("id",editVehId);
+  } else {
+    const {data,error}=await sb.from("fahrzeuge").insert(p).select().single();
+    if(!error) activeVehId=data.id;
+  }
+  $("mVeh").classList.remove("open");
+  await refresh();
+};
+
+// ─── Tankbeleg anlegen / ändern ───
+function lastTire(v){
+  const sorted=[...v.belege].sort((a,b)=>b.km-a.km||b.datum.localeCompare(a.datum));
+  return sorted.length?sorted[0].radae:"sommer";
+}
+function openBeleg(v,id=null){
+  editBelegId=id;
+  const b=id?v.belege.find(x=>x.id===id):null;
+  const unit=fuelUnit(v.fuel);
+  $("belegTitle").textContent=b?"Beleg ändern":"Neuer Tankbeleg";
+  $("bMengeLabel").textContent=`Tankmenge (${unit})`;
+  $("bPreisLabel").textContent=`Preis je ${unit==="l"?"Liter":"kWh"} (€)`;
+  $("bDatum").value=b?b.datum:today();
+  $("bMenge").value=b?b.menge:"";
+  $("bPreis").value=b?b.preis:"";
+  $("bKm").value=b?b.km:String(v.km||"");
+  $("bVoll").value=b?String(b.voll):"true";
+  $("bRadae").value=b?b.radae:lastTire(v);
+  $("mBeleg").classList.add("open");
+}
+$("btnAddBeleg").onclick=()=>{
+  const v=vehicles.find(x=>x.id===activeVehId);
+  if(v)openBeleg(v);
+};
+$("bCancel").onclick=()=>$("mBeleg").classList.remove("open");
+$("bSave").onclick=async()=>{
+  const v=vehicles.find(x=>x.id===activeVehId);
+  const p={fahrzeug_id:activeVehId,datum:$("bDatum").value||today(),
+           menge:Number($("bMenge").value)||0,preis:Number($("bPreis").value)||0,
+           km:Number($("bKm").value)||0,voll:$("bVoll").value==="true",radae:$("bRadae").value};
+  if(!p.km)return alert("Bitte Kilometerstand angeben.");
+  if(editBelegId){
+    if(!confirm("Tankbeleg wirklich ändern?"))return;
+    await sb.from("belege").update(p).eq("id",editBelegId);
+  } else {
+    await sb.from("belege").insert(p);
+  }
+  if(p.km>(v.km||0)) await sb.from("fahrzeuge").update({km:p.km}).eq("id",activeVehId);
+  $("mBeleg").classList.remove("open");
+  await refresh();
+};
+
+// Modal per Tap außerhalb schließen
+document.querySelectorAll(".modal").forEach(m=>{
+  m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open");});
+});
+
+loadAll();
+</script>
+</body>
+</html>
