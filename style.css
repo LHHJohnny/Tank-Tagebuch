@@ -1,8 +1,12 @@
 /* ============================================================
+   Tankbuch – style.css
+   iOS-inspiriert, Dark-Mode default, kompakte 2-Zeilen-Belege
+   ============================================================ */
+
+/* ============================================================
    1. CSS-VARIABLES – Light & Dark
    ============================================================ */
 :root {
-  /* iOS Light Palette */
   --bg:            #F2F2F7;
   --bg-card:       #FFFFFF;
   --bg-elevated:   #FFFFFF;
@@ -175,33 +179,8 @@ h2 {
 .vehicle-tab .tab-name   { font-weight: 600; font-size: 0.95rem; }
 .vehicle-tab .tab-kenner { font-size: 0.72rem; opacity: 0.7; }
 
-.icon-btn {
-  border: 0; background: transparent; cursor: pointer;
-  font-size: 0.9rem; padding: 6px 10px;
-  border-radius: var(--radius-xs); color: inherit;
-  min-width: 32px; min-height: 32px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.vehicle-tab .del { opacity: 0.7; }
-.vehicle-tab .del:hover, .vehicle-tab .del:active { opacity: 1; }
-
-/* Add Vehicle Row */
-#addVehicleRow {
-  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
-}
-#addVehicleRow input,
-#addVehicleRow select {
-  padding: 10px 12px; border: 1px solid var(--border);
-  border-radius: var(--radius-sm); font-size: 0.9rem;
-  background: var(--bg-input); color: var(--text); min-height: 44px;
-}
-#addVehicleRow input:first-child { flex: 1; min-width: 140px; }
-#addVehicleRow input:nth-child(2) { width: 130px; }
-#addVehicleRow select { width: 110px; }
-#addVehicleRow input:nth-child(4) { width: 100px; }
-
 /* ============================================================
-   7. ENTRIES – iOS CARD LAYOUT (statt Tabelle)
+   7. BELEGE – kompakt, 2 Zeilen pro Beleg
    ============================================================ */
 .section-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -218,56 +197,62 @@ h2 {
 
 .status-bar { min-height: 1.2em; font-size: 0.85rem; margin: 4px 0; }
 
-.entries-list {
-  display: flex; flex-direction: column; gap: 12px; margin-top: 12px;
-}
+/* Liste aller Beleg-Zeilen */
+.entries-list { margin-top: 10px; }
 
-.entry-card {
+/* Eine Beleg-Zeile */
+.entry-row {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-  animation: cardIn 0.3s ease;
+  border-bottom: none;
+  padding: 8px 14px;
 }
-.entry-card:active { transform: scale(0.99); }
-
-.entry-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 10px;
+.entry-row:first-of-type { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.entry-row:last-of-type  {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border-bottom: 1px solid var(--border-light);
 }
-.entry-date { font-weight: 600; font-size: 1rem; }
-.entry-km   { font-size: 0.85rem; color: var(--muted); }
+.entry-row:active { background: var(--bg-elevated); }
 
+/* Kopfzeile (Spaltenbeschriftung) */
+.entry-head {
+  background: var(--bg-elevated);
+}
+.entry-head .entry-line { padding: 0; }
+.entry-head .e-date,
+.entry-head .e-km,
+.entry-head .e-val {
+  font-size: 0.68rem; color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+/* Zeilen innerhalb einer Beleg-Zeile */
+.entry-line { display: flex; align-items: center; gap: 8px; }
+.entry-line-1 { font-size: 0.95rem; }
+.entry-line-2 { margin-top: 3px; font-size: 0.78rem; }
+
+/* Spaltenbreiten – tabellarische Ausrichtung */
+.e-date { width: 78px;  flex: none; font-weight: 600; }
+.e-km   { width: 96px;  flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.e-val  { flex: 1; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.e-val.hl { color: var(--blue); }
+
+.e-sub    { width: 64px; flex: none; color: var(--text-tertiary); }
+.e-remark { flex: 1; color: var(--text-tertiary); font-style: italic;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Löschen-Button */
 .entry-del {
+  margin-left: auto;
   color: var(--red); background: none; border: none;
   font-size: 1rem; cursor: pointer;
-  padding: 4px 8px; min-width: 32px; min-height: 32px; border-radius: 50%;
+  padding: 2px 8px; min-width: 30px; min-height: 30px; border-radius: 50%;
+  flex: none;
 }
 .entry-del:hover, .entry-del:active { background: var(--blue-light); }
 
-.entry-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 8px;
-}
-.entry-stat { display: flex; flex-direction: column; }
-.entry-stat-label {
-  font-size: 0.72rem; color: var(--muted); margin-bottom: 2px;
-}
-.entry-stat-value {
-  font-size: 0.95rem; font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.entry-stat-value.highlight { color: var(--blue); }
-
-.entry-remark {
-  margin-top: 8px; font-size: 0.82rem;
-  color: var(--text-tertiary); font-style: italic;
-}
-
 .avg-consumption {
-  margin: 16px 0 0; font-weight: 600;
+  margin: 12px 0 0; font-weight: 600;
   font-size: 0.95rem; text-align: center; color: var(--text-secondary);
 }
 .empty-state {
@@ -276,7 +261,7 @@ h2 {
 }
 
 /* ============================================================
-   8. BOTTOM SHEET (Pop) – iOS Sheet
+   8. BOTTOM SHEET (Popup) – iOS Sheet
    ============================================================ */
 .sheet-overlay {
   position: fixed; inset: 0;
@@ -360,7 +345,8 @@ h2 {
    ============================================================ */
 @media (min-width: 768px) {
   body { max-width: 700px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
-  .entry-grid { grid-template-columns: repeat(4, 1fr); }
+  .e-date { width: 90px; }
+  .e-km   { width: 110px; }
 }
 @media (min-width: 1024px) {
   body { max-width: 900px; }
@@ -379,8 +365,7 @@ button {
 button:hover  { filter: brightness(1.05); }
 button:active { filter: brightness(0.95); transform: scale(0.98); }
 
-body, .login-card, .vehicle-tab, .entry-card, .bottom-sheet,
-.app-header, .sheet-form input, .sheet-form select,
-#addVehicleRow input, #addVehicleRow select, .login-card input {
+body, .login-card, .vehicle-tab, .entry-row, .bottom-sheet,
+.app-header, .sheet-form input, .sheet-form select, .login-card input {
   transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
