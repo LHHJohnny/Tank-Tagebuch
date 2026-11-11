@@ -1,263 +1,109 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tankbuch</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-const SUPABASE_URL = "https://pvhlufhswnwiiujbtbeg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_EWCHyIJv_dKzkVyQRrgrEQ_-5hYaef8";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <h1>⛽ Tankbuch</h1>
+    <p class="login-sub">Bitte anmelden</p>
+    <form id="loginForm">
+      <label>E-Mail
+        <input id="loginEmail" type="email" autocomplete="email" required>
+      </label>
+      <label>Passwort
+        <input id="loginPass" type="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" id="loginBtn">Anmelden</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </div>
+</div>
 
-// ================= AUTH =================
-const loginScreenEl = document.getElementById("loginScreen");
-const appScreenEl   = document.getElementById("appScreen");
-const loginFormEl   = document.getElementById("loginForm");
-const loginErrorEl  = document.getElementById("loginError");
-const loginBtnEl    = document.getElementById("loginBtn");
-const logoutBtnEl   = document.getElementById("logoutBtn");
+<!-- ============ APP ============ -->
+<div id="appScreen" style="display:none">
+  <div class="app-header">
+    <h1>Tankbuch</h1>
+    <button id="logoutBtn" class="logout-btn">Abmelden</button>
+  </div>
 
-let state = { vehicles: [], activeVehicleId: null, entries: [] };
+  <!-- Fahrzeuge -->
+  <section id="vehicleSection">
+    <div id="vehicleTabs"></div>
+    <div id="addVehicleRow">
+      <input id="vName" type="text" placeholder="Name">
+      <input id="vKenner" type="text" placeholder="Kennzeichen">
+      <select id="vFuel">
+        <option>Benzin</option>
+        <option>Diesel</option>
+        <option>Autogas</option>
+        <option>Elektro</option>
+        <option>Hybrid</option>
+      </select>
+      <input id="vKm" type="number" min="0" step="1" placeholder="km-Stand">
+      <button id="addVehicleBtn">+ Fahrzeug</button>
+    </div>
+  </section>
 
-async function initAuth() {
-  // Bestehende Session prüfen
-  const { data } = await supabase.auth.getSession();
-  if (data?.session) {
-    showApp();
-  } else {
-    showLogin();
-  }
+  <!-- Tankbeleg -->
+  <section id="formSection">
+    <h2>Neuer Tankbeleg</h2>
+    <form id="entryForm">
+      <label>Datum
+        <input id="fDatum" type="date" required>
+      </label>
+      <label>km-Stand
+        <input id="fKm" type="number" min="0" step="1" required>
+      </label>
+      <label>Liter (Menge)
+        <input id="fMenge" type="number" min="0" step="0.01" required>
+      </label>
+      <label>€ / Liter
+        <input id="fPreis" type="number" min="0" step="0.001" required>
+      </label>
+      <label>Reifen (Radgröße)
+        <select id="fRadae">
+          <option>Sommer</option>
+          <option>Winter</option>
+          <option>Allwetter</option>
+        </select>
+      </label>
+      <label>Tankart
+        <select id="fVoll">
+          <option value="true">Volltankung</option>
+          <option value="false">Teiltankung</option>
+        </select>
+      </label>
+      <label>Bemerkung
+        <input id="fBemerkung" type="text" placeholder="optional">
+      </label>
+      <button type="submit">Speichern</button>
+    </form>
+    <div id="status" aria-live="polite"></div>
+  </section>
 
-  // Reactiv auf Login/Logout
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session) {
-      showApp();
-    } else {
-      showLogin();
-    }
-  });
-}
+  <!-- Tabelle -->
+  <section id="tableSection">
+    <div id="avgConsumption"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th><th>km</th><th>Liter</th><th>€/l</th>
+          <th>Reifen</th><th>Voll</th><th>l/100 km</th><th>€/100 km</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="entriesBody"></tbody>
+    </table>
+    <div id="emptyState">Kein Fahrzeug ausgewählt.</div>
+  </section>
+</div>
 
-function showLogin() {
-  loginScreenEl.style.display = "flex";
-  appScreenEl.style.display = "none";
-  loginErrorEl.textContent = "";
-}
-
-function showApp() {
-  loginScreenEl.style.display = "none";
-  appScreenEl.style.display = "block";
-  loadVehicles();
-}
-
-loginFormEl.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("loginEmail").value.trim();
-  const pass  = document.getElementById("loginPass").value;
-  loginBtnEl.disabled = true;
-  loginBtnEl.textContent = "…";
-  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-  loginBtnEl.disabled = false;
-  loginBtnEl.textContent = "Anmelden";
-  if (error) {
-    loginErrorEl.textContent = "Login fehlgeschlagen: " + error.message;
-  }
-  // onAuthStateChange übernimmt showApp()
-});
-
-logoutBtnEl.addEventListener("click", () => supabase.auth.signOut());
-
-// ================= FAHRZEUGE =================
-const vehicleTabsEl = document.getElementById("vehicleTabs");
-const formSectionEl = document.getElementById("formSection");
-const formEl        = document.getElementById("entryForm");
-const tableBodyEl   = document.getElementById("entriesBody");
-const emptyEl       = document.getElementById("emptyState");
-const statusEl      = document.getElementById("status");
-const avgEl         = document.getElementById("avgConsumption");
-
-function setStatus(msg, isErr = false) {
-  statusEl.textContent = msg;
-  statusEl.style.color = isErr ? "#d0342c" : "#3a8a3a";
-  if (msg) setTimeout(() => { statusEl.textContent = ""; }, 4000);
-}
-
-function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
-
-async function loadVehicles() {
-  const { data, error } = await supabase.from("vehicles").select().order("name");
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  state.vehicles = data || [];
-  renderVehicleTabs();
-  if (state.vehicles.length > 0) {
-    if (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId)) {
-      state.activeVehicleId = state.vehicles[0].id;
-    }
-    await selectVehicle(state.activeVehicleId);
-  } else {
-    state.activeVehicleId = null;
-    tableBodyEl.innerHTML = "";
-    avgEl.textContent = "";
-    emptyEl.style.display = "block";
-    emptyEl.textContent = "Noch kein Fahrzeug angelegt. Lege oben eines an.";
-  }
-}
-
-function renderVehicleTabs() {
-  vehicleTabsEl.innerHTML = "";
-  for (const v of state.vehicles) {
-    const tab = document.createElement("div");
-    tab.className = "vehicle-tab" + (v.id === state.activeVehicleId ? " active" : "");
-
-    const name = document.createElement("span");
-    name.className = "tab-name";
-    name.textContent = v.name;
-    name.addEventListener("click", () => selectVehicle(v.id));
-
-    const renameBtn = document.createElement("button");
-    renameBtn.className = "icon-btn";
-    renameBtn.title = "Umbenennen";
-    renameBtn.textContent = "✎";
-    renameBtn.addEventListener("click", () => renameVehicle(v));
-
-    const delBtn = document.createElement("button");
-    delBtn.className = "icon-btn del";
-    delBtn.title = "Fahrzeug löschen";
-    delBtn.textContent = "✕";
-    delBtn.addEventListener("click", () => deleteVehicle(v));
-
-    tab.append(name, renameBtn, delBtn);
-    vehicleTabsEl.appendChild(tab);
-  }
-}
-
-async function addVehicle() {
-  const input = document.getElementById("newVehicleName");
-  const name = input.value.trim();
-  if (!name) { setStatus("Bitte Fahrzeugname eingeben.", true); return; }
-  const { data, error } = await supabase.from("vehicles").insert({ name }).select().single();
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  input.value = "";
-  setStatus("Fahrzeug angelegt.");
-  await loadVehicles();
-  selectVehicle(data.id);
-}
-
-async function renameVehicle(v) {
-  const name = prompt("Neuer Name für „" + v.name + "“:", v.name);
-  if (!name || name === v.name) return;
-  const { error } = await supabase.from("vehicles").update({ name: name.trim() }).eq("id", v.id);
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  setStatus("Umbenannt.");
-  await loadVehicles();
-}
-
-async function deleteVehicle(v) {
-  if (!confirm("„" + v.name + "“ und alle Tankbelege löschen?")) return;
-  const { error } = await supabase.from("vehicles").delete().eq("id", v.id);
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  setStatus("Fahrzeug gelöscht.");
-  await loadVehicles();
-}
-
-async function selectVehicle(id) {
-  state.activeVehicleId = id;
-  renderVehicleTabs();
-  const { data, error } = await supabase.from("fuel_entries").select().eq("vehicle_id", id);
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  state.entries = data || [];
-  renderEntries();
-}
-
-// ================= TANKBELEGE =================
-function computeWithConsumption(entries) {
-  const sorted = [...entries].sort((a, b) => {
-    if (a.entry_date !== b.entry_date) return a.entry_date < b.entry_date ? -1 : 1;
-    if (a.km !== b.km) return a.km - b.km;
-    return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
-  });
-  let prevKm = null;
-  return sorted.map(e => {
-    let cons = null, cost100 = null, distance = null;
-    if (prevKm !== null && e.km > prevKm) {
-      distance = e.km - prevKm;
-      if (e.liters > 0) cons = (e.liters / distance) * 100;
-      if (e.liters > 0 && e.price_per_l > 0) cost100 = (e.liters * e.price_per_l) / distance * 100;
-    }
-    prevKm = e.km;
-    return { ...e, distance, cons, cost100 };
-  });
-}
-
-function renderEntries() {
-  const rows = computeWithConsumption(state.entries);
-  tableBodyEl.innerHTML = "";
-  if (rows.length === 0) {
-    emptyEl.style.display = "block";
-    emptyEl.textContent = "Noch keine Tankbelege für dieses Fahrzeug.";
-    avgEl.textContent = "";
-    return;
-  }
-  emptyEl.style.display = "none";
-  rows.reverse().forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      "<td>" + r.entry_date + "</td>" +
-      "<td>" + Number(r.km).toLocaleString("de-DE") + "</td>" +
-      "<td>" + Number(r.liters).toFixed(1) + "</td>" +
-      "<td>" + Number(r.price_per_l).toFixed(3) + "</td>" +
-      "<td>" + r.tire_type + "</td>" +
-      "<td>" + (r.fill_type || "Volltankung") + "</td>" +
-      "<td>" + fmt(r.cons) + "</td>" +
-      "<td>" + fmt(r.cost100, 2) + " €</td>";
-    const tda = document.createElement("td");
-    const delBtn = document.createElement("button");
-    delBtn.className = "icon-btn row-del";
-    delBtn.title = "Beleg löschen";
-    delBtn.textContent = "✕";
-    delBtn.addEventListener("click", () => deleteEntry(r.id));
-    tda.appendChild(delBtn);
-    tr.appendChild(tda);
-    tableBodyEl.appendChild(tr);
-  });
-  const valid = rows.filter(r => r.cons != null);
-  avgEl.textContent = valid.length
-    ? "Ø Verbrauch: " + fmt(valid.reduce((s, r) => s + r.cons, 0) / valid.length) + " l/100 km"
-    : "Ø: –";
-}
-
-function addEntry(e) {
-  e.preventDefault();
-  if (!state.activeVehicleId) return;
-  const payload = {
-    vehicle_id: state.activeVehicleId,
-    entry_date: document.getElementById("fDate").value || new Date().toISOString().slice(0, 10),
-    km: parseInt(document.getElementById("fKm").value, 10),
-    liters: parseFloat(document.getElementById("fLiters").value.replace(",", ".")),
-    price_per_l: parseFloat(document.getElementById("fPrice").value.replace(",", ".")),
-    tire_type: document.getElementById("fTire").value,
-    fill_type: document.getElementById("fFill").value,   // Volltankung / Teiltankung
-    notes: document.getElementById("fNotes").value.trim() || null,
-  };
-  if (!payload.km || isNaN(payload.liters) || isNaN(payload.price_per_l)) {
-    setStatus("Bitte km, Liter und Preis korrekt ausfüllen.", true); return;
-  }
-  supabase.from("fuel_entries").insert(payload).then(({ error }) => {
-    if (error) { setStatus("Fehler: " + error.message, true); return; }
-    formEl.reset();
-    setStatus("Tankbeleg gespeichert.");
-    selectVehicle(state.activeVehicleId);
-  });
-}
-
-function deleteEntry(id) {
-  if (!confirm("Diesen Tankbeleg löschen?")) return;
-  supabase.from("fuel_entries").delete().eq("id", id).then(({ error }) => {
-    if (error) { setStatus("Fehler: " + error.message, true); return; }
-    setStatus("Beleg gelöscht.");
-    selectVehicle(state.activeVehicleId);
-  });
-}
-
-// ================= INIT =================
-formEl.addEventListener("submit", addEntry);
-document.getElementById("addVehicleBtn").addEventListener("click", addVehicle);
-document.getElementById("newVehicleName").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") addVehicle();
-});
-initAuth();
+<script type="module" src="app.js"></script>
+</body>
+</html>
