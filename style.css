@@ -1,6 +1,6 @@
 /* ============================================================
    Tankbuch – style.css
-   iOS-inspiriert, Dark-Mode default, kompakte 2-Zeilen-Belege
+   iOS-inspiriert, Dark-Mode default, kompakte Tabelle
    ============================================================ */
 
 /* ============================================================
@@ -180,7 +180,7 @@ h2 {
 .vehicle-tab .tab-kenner { font-size: 0.72rem; opacity: 0.7; }
 
 /* ============================================================
-   7. BELEGE – kompakt, 2 Zeilen pro Beleg
+   7. BELEGE – kompakte Tabelle, 1 Zeile pro Beleg, horizontal scrollbar
    ============================================================ */
 .section-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -197,66 +197,79 @@ h2 {
 
 .status-bar { min-height: 1.2em; font-size: 0.85rem; margin: 4px 0; }
 
-/* Liste aller Beleg-Zeilen */
-.entries-list { margin-top: 10px; }
-
-/* Eine Beleg-Zeile */
-.entry-row {
-  background: var(--bg-card);
+/* Wrapper – horizontal scrollbar */
+.entries-table-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-light);
-  border-bottom: none;
-  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
 }
-.entry-row:first-of-type { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-.entry-row:last-of-type  {
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+
+/* Die Tabelle */
+.entry-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+/* ALLE Zellen: gleiche Schrift, kompakt */
+.entry-table th,
+.entry-table td {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: normal;
+  font-family: inherit;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* Kopfzeile */
+.entry-table thead th {
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Datenzeilen */
+.entry-table tbody tr {
   border-bottom: 1px solid var(--border-light);
 }
-.entry-row:active { background: var(--bg-elevated); }
-
-/* Kopfzeile (Spaltenbeschriftung) */
-.entry-head {
+.entry-table tbody tr:last-child {
+  border-bottom: none;
+}
+.entry-table tbody tr:active {
   background: var(--bg-elevated);
 }
-.entry-head .entry-line { padding: 0; }
-.entry-head .e-date,
-.entry-head .e-km,
-.entry-head .e-val {
-  font-size: 0.68rem; color: var(--muted); font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.3px;
+
+/* Erste Spalte (Datum) linksbündig */
+.entry-table td:first-child,
+.entry-table th:first-child {
+  text-align: left;
 }
-
-/* Zeilen innerhalb einer Beleg-Zeile */
-.entry-line { display: flex; align-items: center; gap: 8px; }
-.entry-line-1 { font-size: 0.95rem; }
-.entry-line-2 { margin-top: 3px; font-size: 0.78rem; }
-
-/* Spaltenbreiten – tabellarische Ausrichtung */
-.e-date { width: 78px;  flex: none; font-weight: 600; }
-.e-km   { width: 96px;  flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
-.e-val  { flex: 1; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.e-val.hl { color: var(--blue); }
-
-.e-sub    { width: 64px; flex: none; color: var(--text-tertiary); }
-.e-remark { flex: 1; color: var(--text-tertiary); font-style: italic;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Löschen-Button */
 .entry-del {
-  margin-left: auto;
   color: var(--red); background: none; border: none;
-  font-size: 1rem; cursor: pointer;
-  padding: 2px 8px; min-width: 30px; min-height: 30px; border-radius: 50%;
-  flex: none;
+  font-size: 0.85rem; cursor: pointer;
+  padding: 2px 6px; min-width: 28px; min-height: 28px; border-radius: 50%;
 }
 .entry-del:hover, .entry-del:active { background: var(--blue-light); }
 
 .avg-consumption {
-  margin: 12px 0 0; font-weight: 600;
-  font-size: 0.95rem; text-align: center; color: var(--text-secondary);
+  margin: 10px 0 0; font-weight: 600;
+  font-size: 0.9rem; text-align: center; color: var(--text-secondary);
 }
 .empty-state {
-  color: var(--muted); padding: 40px 16px;
+  color: var(--muted); padding: 32px 16px;
   text-align: center; font-size: 0.95rem;
 }
 
@@ -345,8 +358,6 @@ h2 {
    ============================================================ */
 @media (min-width: 768px) {
   body { max-width: 700px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
-  .e-date { width: 90px; }
-  .e-km   { width: 110px; }
 }
 @media (min-width: 1024px) {
   body { max-width: 900px; }
@@ -365,7 +376,7 @@ button {
 button:hover  { filter: brightness(1.05); }
 button:active { filter: brightness(0.95); transform: scale(0.98); }
 
-body, .login-card, .vehicle-tab, .entry-row, .bottom-sheet,
+body, .login-card, .vehicle-tab, .entry-table, .bottom-sheet,
 .app-header, .sheet-form input, .sheet-form select, .login-card input {
   transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
