@@ -4,9 +4,8 @@ const SUPABASE_URL = "https://jfgkghilikuhjijfvnjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_3kHpVg2NKf3MROQgYuIYjg_WMcg4h8l";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Tabellen-Namen (passen exakt an deine DB)
-const TBL_FZ  = "fahrzeuge";   // → falls in der DB klein "fahrzeuge", hier anpassen
-const TBL_BE  = "belege";
+const TBL_FZ = "fahrzeuge";
+const TBL_BE = "belege";
 
 const $ = (id) => document.getElementById(id);
 const state = { vehicles: [], activeVehicleId: null, entries: [] };
@@ -22,7 +21,6 @@ const logoutBtnEl   = $("logoutBtn");
 async function initAuth() {
   const { data } = await supabase.auth.getSession();
   if (data?.session) { showApp(); } else { showLogin(); }
-
   supabase.auth.onAuthStateChange((_e, session) => {
     if (session) showApp(); else showLogin();
   });
@@ -84,7 +82,7 @@ async function loadVehicles() {
     tableBodyEl.innerHTML = "";
     avgEl.textContent = "";
     emptyEl.style.display = "block";
-    emptyEl.textContent = "Noch kein Fahrzeug angelegt.";
+    emptyEl.textContent = "Keine Fahrzeuge in der Datenbank.";
   }
 }
 
@@ -121,25 +119,6 @@ function renderVehicleTabs() {
     tab.append(name, renameBtn, delBtn);
     vehicleTabsEl.appendChild(tab);
   }
-}
-
-async function addVehicle() {
-  const name    = $("vName").value.trim();
-  const kenner  = $("vKenner").value.trim();
-  const fuel    = $("vFuel").value;
-  const km      = parseInt($("vKm").value, 10) || 0;
-  if (!name) { setStatus("Bitte Fahrzeugname eingeben.", true); return; }
-
-  const { data, error } = await supabase
-    .from(TBL_FZ)
-    .insert({ name, kenner, fuel, km })
-    .select().single();
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-
-  $("vName").value = ""; $("vKenner").value = ""; $("vKm").value = "";
-  setStatus("Fahrzeug angelegt.");
-  await loadVehicles();
-  selectVehicle(data.id);
 }
 
 async function editVehicle(v) {
@@ -265,6 +244,4 @@ function deleteEntry(id) {
 
 // ================= INIT =================
 formEl.addEventListener("submit", addEntry);
-$("addVehicleBtn").addEventListener("click", addVehicle);
-$("vName").addEventListener("keydown", (e) => { if (e.key === "Enter") addVehicle(); });
 initAuth();
