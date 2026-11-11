@@ -134,7 +134,6 @@ async function loadVehicles() {
   }
 }
 
-// Nur die Auswahl zwischen den Autos – kein Anlegen, kein Bearbeiten, kein Löschen.
 function renderVehicleTabs() {
   vehicleTabsEl.innerHTML = "";
   for (const v of state.vehicles) {
@@ -167,7 +166,7 @@ async function selectVehicle(id) {
   renderEntries();
 }
 
-// ================= BELEGE – tabellarisch, 2 Zeilen pro Beleg =================
+// ================= BELEGE – Echte Tabelle, kompakt, 1 Zeile pro Beleg =================
 function computeWithConsumption(entries) {
   const sorted = [...entries].sort((a, b) => {
     if (a.datum !== b.datum) return a.datum < b.datum ? -1 : 1;
@@ -196,12 +195,7 @@ function fmtDate(iso) {
   });
 }
 
-function mkSpan(cls, text) {
-  const s = document.createElement("span");
-  s.className = cls;
-  s.textContent = text;
-  return s;
-}
+const COLS = ["Datum", "km", "l", "l/100", "€/100", "€/l", "Reifen", "Tankart", "Bemerkung", ""];
 
 function renderEntries() {
   const listEl = $("entriesList");
@@ -216,48 +210,59 @@ function renderEntries() {
   }
   emptyEl.style.display = "none";
 
-  // Kopfzeile (Spaltenbeschriftung)
-  const head = document.createElement("div");
-  head.className = "entry-row entry-head";
-  const headLine = document.createElement("div");
-  headLine.className = "entry-line";
-  [["e-date","Datum"], ["e-km","km"], ["e-val","l"], ["e-val","l/100"], ["e-val","€/100"]]
-    .forEach(([cls, txt]) => headLine.appendChild(mkSpan(cls, txt)));
-  head.appendChild(headLine);
-  listEl.appendChild(head);
+  const table = document.createElement("table");
+  table.className = "entry-table";
 
-  // Belege – jeder kompakt in 2 Zeilen
+  // THEAD
+  const thead = document.createElement("thead");
+  const hrow = document.createElement("tr");
+  COLS.forEach(txt => {
+    const th = document.createElement("th");
+    th.textContent = txt;
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  table.appendChild(thead);
+
+  // TBODY
+  const tbody = document.createElement("tbody");
+
   rows.reverse().forEach(r => {
-    const row = document.createElement("div");
-    row.className = "entry-row";
+    const tr = document.createElement("tr");
 
-    // Zeile 1 – Hauptwerte
-    const l1 = document.createElement("div");
-    l1.className = "entry-line entry-line-1";
-    l1.appendChild(mkSpan("e-date", fmtDate(r.datum)));
-    l1.appendChild(mkSpan("e-km", fmtKm(r.km) + " km"));
-    l1.appendChild(mkSpan("e-val", Number(r.menge).toFixed(1) + " l"));
-    l1.appendChild(mkSpan("e-val hl", fmt(r.cons) + " l/100"));
-    l1.appendChild(mkSpan("e-val hl", fmt(r.cost100, 2) + " €/100"));
+    const cells = [
+      fmtDate(r.datum),
+      fmtKm(r.km),
+      Number(r.menge).toFixed(1),
+      fmt(r.cons),
+      fmt(r.cost100, 2),
+      Number(r.preis).toFixed(2),
+      r.radae || "–",
+      r.voll ? "Voll" : "Teil",
+      r.bemerkung || "",
+    ];
 
-    // Zeile 2 – Nebenwerte + Löschen
-    const l2 = document.createElement("div");
-    l2.className = "entry-line entry-line-2";
-    l2.appendChild(mkSpan("e-sub", Number(r.preis).toFixed(2) + " €/l"));
-    l2.appendChild(mkSpan("e-sub", r.radae || "–"));
-    l2.appendChild(mkSpan("e-sub", r.voll ? "Voll" : "Teil"));
-    if (r.bemerkung) l2.appendChild(mkSpan("e-remark", r.bemerkung));
+    cells.forEach(text => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.appendChild(td);
+    });
 
+    // Löschen-Button
+    const tdDel = document.createElement("td");
     const delBtn = document.createElement("button");
     delBtn.className = "entry-del";
     delBtn.title = "Beleg löschen";
     delBtn.textContent = "✕";
     delBtn.addEventListener("click", () => deleteEntry(r.id));
-    l2.appendChild(delBtn);
+    tdDel.appendChild(delBtn);
+    tr.appendChild(tdDel);
 
-    row.append(l1, l2);
-    listEl.appendChild(row);
+    tbody.appendChild(tr);
   });
+
+  table.appendChild(tbody);
+  listEl.appendChild(table);
 
   const valid = rows.filter(r => r.cons != null);
   avgEl.textContent = valid.length
