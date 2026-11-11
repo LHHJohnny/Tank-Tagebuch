@@ -1,99 +1,386 @@
+/* ============================================================
+   1. CSS-VARIABLES – Light & Dark
+   ============================================================ */
 :root {
-  --blue: #007aff;
-  --border: #d8dce0;
-  --muted: #6b7280;
-  --red: #d0342c;
-  --green: #3a8a3a;
-  --bg: #ffffff;
-  --bg-card: #ffffff;
-  --bg-th: #f2f4f6;
-  --text: #1f2933;
+  /* iOS Light Palette */
+  --bg:            #F2F2F7;
+  --bg-card:       #FFFFFF;
+  --bg-elevated:   #FFFFFF;
+  --bg-input:      #F2F2F7;
+  --bg-overlay:    rgba(0, 0, 0, 0.35);
+  --blue:          #007AFF;
+  --blue-light:    rgba(0, 122, 255, 0.10);
+  --border:        rgba(60, 60, 67, 0.15);
+  --border-light:  rgba(60, 60, 67, 0.08);
+  --muted:         #8E8E93;
+  --text:          #1C1C1E;
+  --text-secondary:#3A3A3C;
+  --text-tertiary: #8E8E93;
+  --red:           #FF3B30;
+  --green:         #34C759;
+  --shadow:        0 10px 40px rgba(0,0,0,0.10);
+  --shadow-sm:     0 2px 12px rgba(0,0,0,0.06);
+  --radius:        14px;
+  --radius-sm:     10px;
+  --radius-xs:     8px;
+  --safe-top:      env(safe-area-inset-top, 0px);
+  --safe-bottom:   env(safe-area-inset-bottom, 0px);
 }
+
 :root[data-theme="dark"] {
-  --blue: #3b9bff;
-  --border: #2c313a;
-  --muted: #9aa3af;
-  --red: #ff6b63;
-  --green: #5ec95e;
-  --bg: #0f1115;
-  --bg-card: #1a1d23;
-  --bg-th: #1a1d23;
-  --text: #e5e7eb;
+  --bg:            #000000;
+  --bg-card:       #1C1C1E;
+  --bg-elevated:   #2C2C2E;
+  --bg-input:      #2C2C2E;
+  --bg-overlay:    rgba(0, 0, 0, 0.60);
+  --blue:          #0A84FF;
+  --blue-light:    rgba(10, 132, 255, 0.15);
+  --border:        rgba(84, 84, 90, 0.40);
+  --border-light:  rgba(84, 84, 90, 0.25);
+  --muted:         #8E8E93;
+  --text:          #FFFFFF;
+  --text-secondary:#E5E5EA;
+  --text-tertiary: #8E8E93;
+  --red:           #FF453A;
+  --green:         #30D158;
+  --shadow:        0 10px 40px rgba(0,0,0,0.50);
+  --shadow-sm:     0 2px 12px rgba(0,0,0,0.40);
 }
-html { background: var(--bg); color-scheme: light; }
-html[data-theme="dark"] { color-scheme: dark; }
-* { box-sizing: border-box; }
+
+/* ============================================================
+   2. RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+               "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
   color: var(--text);
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 16px) 16px
+           calc(var(--safe-bottom) + 24px);
+  transition: background-color 0.3s, color 0.3s;
+  -webkit-font-smoothing: antialiased;
 }
-input, select, button { font-family: inherit; }
-input, select { background: var(--bg-card); color: var(--text); }
 
-/* LOGIN */
-.login-wrap { display: flex; align-items: center; justify-content: center; min-height: 90vh; }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* ============================================================
+   3. LOGIN
+   ============================================================ */
+.login-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100dvh; padding: 20px;
+}
 .login-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 32px; width: 100%; max-width: 380px; text-align: center;
-  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  width: 100%; max-width: 380px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  animation: cardIn 0.4s ease;
 }
-.login-card h1 { margin: 0 0 4px; font-size: 1.5rem; }
-.login-sub { color: var(--muted); margin: 0 0 20px; }
-.login-card form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
-.login-card label { font-size: .85rem; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
-.login-card input { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
-.login-card button { margin-top: 8px; padding: 12px; font-size: 1rem; }
-.login-error { color: var(--red); font-size: .85rem; min-height: 1.2em; }
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-card h1   { margin: 0 0 6px; font-size: 1.7rem; font-weight: 700; }
+.login-sub       { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+.login-card form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.login-card label {
+  font-size: 0.82rem; color: var(--muted);
+  display: flex; flex-direction: column; gap: 6px; font-weight: 500;
+}
+.login-card input {
+  padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 1rem;
+  background: var(--bg-input); color: var(--text);
+  outline: none; transition: border-color 0.2s;
+}
+.login-card input:focus { border-color: var(--blue); }
+.login-card button { margin-top: 12px; padding: 14px; font-size: 1rem; font-weight: 600; }
+.login-error { color: var(--red); font-size: 0.85rem; min-height: 1.2em; }
 
-/* HEADER */
-.app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; }
-.app-header h1 { margin: 0; }
-.logout-btn, .theme-btn {
+/* ============================================================
+   4. HEADER
+   ============================================================ */
+.app-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.app-header h1 { font-size: 1.6rem; font-weight: 700; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.logout-btn {
   background: transparent; color: var(--muted);
-  border: 1px solid var(--border); font-size: .85rem;
+  border: 1px solid var(--border); font-size: 0.82rem;
+  padding: 8px 14px; border-radius: 20px; font-weight: 500;
 }
-.logout-btn:hover { border-color: var(--red); color: var(--red); }
-.theme-btn { font-size: 1rem; }
+.logout-btn:hover, .logout-btn:active { border-color: var(--red); color: var(--red); }
 
-/* FAHRZEUGE */
-h2 { font-size: 1.1rem; margin: 20px 0 10px; }
-#vehicleTabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.theme-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  font-size: 1.1rem; cursor: pointer;
+  transition: transform 0.2s, background 0.3s;
+}
+.theme-btn:hover, .theme-btn:active { transform: scale(1.1); }
+
+/* ============================================================
+   5. SECTIONS & TITLES
+   ============================================================ */
+h2 {
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.5px; margin: 24px 0 10px;
+}
+.vehicles-section { margin-bottom: 20px; }
+.entries-section  { margin-bottom: 40px; }
+
+/* ============================================================
+   6. VEHICLE TABS
+   ============================================================ */
+.vehicle-tabs {
+  display: flex; gap: 10px;
+  overflow-x: auto; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
 .vehicle-tab {
-  padding: 8px 6px 8px 14px; border: 1px solid var(--border); border-radius: 8px;
-  cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--bg-card);
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card);
+  white-space: nowrap; min-height: 44px;
+  transition: all 0.2s; box-shadow: var(--shadow-sm);
 }
-.vehicle-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-.vehicle-tab .tab-name { font-weight: 600; }
-.vehicle-tab .tab-kenner { font-size: .75rem; opacity: .8; }
-.icon-btn { border: 0; background: transparent; cursor: pointer; font-size: .9rem; padding: 2px 6px; border-radius: 6px; color: inherit; }
-.vehicle-tab .del { opacity: .7; }
-
-/* FORM */
-form#entryForm {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px; align-items: end; margin: 10px 0;
+.vehicle-tab:active { transform: scale(0.97); }
+.vehicle-tab.active {
+  background: var(--blue); color: #fff; border-color: var(--blue);
 }
-form#entryForm label { display: flex; flex-direction: column; font-size: .8rem; color: var(--muted); gap: 4px; }
-form#entryForm input, form#entryForm select {
-  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: .95rem;
+.vehicle-tab .tab-name   { font-weight: 600; font-size: 0.95rem; }
+.vehicle-tab .tab-kenner { font-size: 0.72rem; opacity: 0.7; }
+
+.icon-btn {
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 0.9rem; padding: 6px 10px;
+  border-radius: var(--radius-xs); color: inherit;
+  min-width: 32px; min-height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
 }
-#status { min-height: 1.2em; font-size: .9rem; }
+.vehicle-tab .del { opacity: 0.7; }
+.vehicle-tab .del:hover, .vehicle-tab .del:active { opacity: 1; }
 
-/* TABELLE */
-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
-th { background: var(--bg-th); }
-td { font-variant-numeric: tabular-nums; }
-.row-del { background: transparent; color: var(--red); }
-#emptyState { color: var(--muted); padding: 16px 0; }
-#avgConsumption { margin: 10px 0 0; font-weight: 600; }
+/* Add Vehicle Row */
+#addVehicleRow {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
+}
+#addVehicleRow input,
+#addVehicleRow select {
+  padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 0.9rem;
+  background: var(--bg-input); color: var(--text); min-height: 44px;
+}
+#addVehicleRow input:first-child { flex: 1; min-width: 140px; }
+#addVehicleRow input:nth-child(2) { width: 130px; }
+#addVehicleRow select { width: 110px; }
+#addVehicleRow input:nth-child(4) { width: 100px; }
 
-/* BUTTONS */
+/* ============================================================
+   7. ENTRIES – iOS CARD LAYOUT (statt Tabelle)
+   ============================================================ */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.fab-btn {
+  background: var(--blue); color: #fff; border: none;
+  padding: 10px 20px; border-radius: 22px;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,122,255,0.35);
+  transition: transform 0.15s, box-shadow 0.2s; min-height: 44px;
+}
+.fab-btn:active { transform: scale(0.95); }
+
+.status-bar { min-height: 1.2em; font-size: 0.85rem; margin: 4px 0; }
+
+.entries-list {
+  display: flex; flex-direction: column; gap: 12px; margin-top: 12px;
+}
+
+.entry-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  animation: cardIn 0.3s ease;
+}
+.entry-card:active { transform: scale(0.99); }
+
+.entry-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.entry-date { font-weight: 600; font-size: 1rem; }
+.entry-km   { font-size: 0.85rem; color: var(--muted); }
+
+.entry-del {
+  color: var(--red); background: none; border: none;
+  font-size: 1rem; cursor: pointer;
+  padding: 4px 8px; min-width: 32px; min-height: 32px; border-radius: 50%;
+}
+.entry-del:hover, .entry-del:active { background: var(--blue-light); }
+
+.entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+.entry-stat { display: flex; flex-direction: column; }
+.entry-stat-label {
+  font-size: 0.72rem; color: var(--muted); margin-bottom: 2px;
+}
+.entry-stat-value {
+  font-size: 0.95rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.entry-stat-value.highlight { color: var(--blue); }
+
+.entry-remark {
+  margin-top: 8px; font-size: 0.82rem;
+  color: var(--text-tertiary); font-style: italic;
+}
+
+.avg-consumption {
+  margin: 16px 0 0; font-weight: 600;
+  font-size: 0.95rem; text-align: center; color: var(--text-secondary);
+}
+.empty-state {
+  color: var(--muted); padding: 40px 16px;
+  text-align: center; font-size: 0.95rem;
+}
+
+/* ============================================================
+   8. BOTTOM SHEET (Pop) – iOS Sheet
+   ============================================================ */
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg-overlay);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.bottom-sheet {
+  background: var(--bg-card);
+  width: 100%; max-width: 560px;
+  max-height: 90dvh; overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  padding: 12px 20px calc(20px + var(--safe-bottom));
+  position: relative;
+  animation: sheetUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.sheet-grabber {
+  width: 36px; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  margin: 0 auto 16px;
+}
+
+.bottom-sheet h3 {
+  font-size: 1.2rem; font-weight: 700;
+  text-align: center; margin-bottom: 20px;
+}
+
+.sheet-form {
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sheet-form label {
+  display: flex; flex-direction: column;
+  font-size: 0.8rem; color: var(--muted);
+  gap: 6px; font-weight: 500;
+}
+.sheet-form input,
+.sheet-form select {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  background: var(--bg-input); color: var(--text);
+  min-height: 48px; outline: none;
+  transition: border-color 0.2s;
+}
+.sheet-form input:focus,
+.sheet-form select:focus { border-color: var(--blue); }
+
+.sheet-submit {
+  margin-top: 8px; padding: 14px;
+  font-size: 1rem; font-weight: 600;
+  border-radius: var(--radius-sm); min-height: 52px;
+}
+
+.sheet-close {
+  position: absolute; top: 16px; right: 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--muted);
+  width: 32px; height: 32px;
+  border-radius: 50%; cursor: pointer;
+  font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet-close:hover, .sheet-close:active { background: var(--red); color: #fff; }
+
+/* ============================================================
+   9. RESPONSIVE
+   ============================================================ */
+@media (min-width: 768px) {
+  body { max-width: 700px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+  .entry-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1024px) {
+  body { max-width: 900px; }
+}
+
+/* ============================================================
+   10. GLOBAL BUTTONS & TRANSITIONS
+   ============================================================ */
 button {
   border: 0; background: var(--blue); color: #fff;
-  padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: .95rem;
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.95rem; font-weight: 500;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
-button:hover { filter: brightness(1.05); }
+button:hover  { filter: brightness(1.05); }
+button:active { filter: brightness(0.95); transform: scale(0.98); }
+
+body, .login-card, .vehicle-tab, .entry-card, .bottom-sheet,
+.app-header, .sheet-form input, .sheet-form select,
+#addVehicleRow input, #addVehicleRow select, .login-card input {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
