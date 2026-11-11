@@ -1,11 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-const SUPABASE_URL = "https://pvhlufhswnwiiujbtbeg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_EWCHyIJv_dKzkVyQRrgrEQ_-5hYaef8";
+const SUPABASE_URL = "https://jfgkghilikuhjijfvnjc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_3kHpVg2NKf3MROQgYuIYjg_WMcg4h8l";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Tabellen-Namen (passen exakt an deine DB)
-const TBL_FZ  = "Fahrzeuge";   // → falls in der DB klein "fahrzeuge", hier anpassen
+const TBL_FZ  = "fahrzeuge";   // → falls in der DB klein "fahrzeuge", hier anpassen
 const TBL_BE  = "belege";
 
 const $ = (id) => document.getElementById(id);
