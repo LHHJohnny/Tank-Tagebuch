@@ -10,13 +10,13 @@ const TBL_BE = "belege";
 const $ = (id) => document.getElementById(id);
 const state = { vehicles: [], activeVehicleId: null, entries: [] };
 
-// ================= DARK MODE =================
+// ================= DARK MODE (standardmäßig dunkel) =================
 const themeToggleEl = $("themeToggle");
 
 function initTheme() {
+  // Dunkelmodus ist jetzt der Standard, wenn noch nichts gespeichert ist.
   const saved = localStorage.getItem("tankbuch-theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const theme = saved || (prefersDark ? "dark" : "light");
+  const theme = saved || "dark";
   applyTheme(theme);
 }
 
@@ -78,7 +78,7 @@ loginFormEl.addEventListener("submit", async (e) => {
 
 logoutBtnEl.addEventListener("click", () => supabase.auth.signOut());
 
-// ================= BOTTOM SHEET (Pop) =================
+// ================= BOTTOM SHEET (Pop) für + Beleg =================
 const sheetOverlay  = $("entrySheetOverlay");
 const sheetEl       = $("entrySheet");
 const openSheetBtn  = $("openEntrySheet");
@@ -86,10 +86,8 @@ const sheetCloseBtn = $("sheetClose");
 
 function openSheet() {
   sheetOverlay.style.display = "flex";
-  // Datum vorbelegen
   const fDatum = $("fDatum");
   if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
-  // Fokus auf erstes Feld
   setTimeout(() => $("fKm").focus(), 100);
 }
 
@@ -103,7 +101,7 @@ sheetOverlay.addEventListener("click", (e) => {
   if (e.target === sheetOverlay) closeSheet();
 });
 
-// ================= FAHRZEUGE =================
+// ================= FAHRZEUGE (nur Auswahl) =================
 const vehicleTabsEl = $("vehicleTabs");
 const statusEl      = $("status");
 const avgEl         = $("avgConsumption");
@@ -132,11 +130,12 @@ async function loadVehicles() {
   } else {
     state.activeVehicleId = null;
     emptyEl.style.display = "block";
-    emptyEl.textContent   = "Noch kein Fahrzeug angelegt.";
+    emptyEl.textContent   = "Noch kein Fahrzeug vorhanden.";
     avgEl.textContent = "";
   }
 }
 
+// Nur die Auswahl zwischen den Autos – kein Anlegen, kein Bearbeiten, kein Löschen.
 function renderVehicleTabs() {
   vehicleTabsEl.innerHTML = "";
   for (const v of state.vehicles) {
@@ -155,63 +154,9 @@ function renderVehicleTabs() {
     }
     name.addEventListener("click", () => selectVehicle(v.id));
 
-    const renameBtn = document.createElement("button");
-    renameBtn.className = "icon-btn";
-    renameBtn.title = "Umbenennen / bearbeiten";
-    renameBtn.textContent = "✎";
-    renameBtn.addEventListener("click", (e) => { e.stopPropagation(); editVehicle(v); });
-
-    const delBtn = document.createElement("button");
-    delBtn.className = "icon-btn del";
-    delBtn.title = "Fahrzeug löschen";
-    delBtn.textContent = "✕";
-    delBtn.addEventListener("click", (e) => { e.stopPropagation(); deleteVehicle(v); });
-
-    tab.append(name, renameBtn, delBtn);
+    tab.appendChild(name);
     vehicleTabsEl.appendChild(tab);
   }
-}
-
-async function addVehicle() {
-  const name   = $("vName").value.trim();
-  const kenner = $("vKenner").value.trim();
-  const fuel   = $("vFuel").value;
-  const km     = parseInt($("vKm").value, 10) || 0;
-  if (!name) { setStatus("Bitte Fahrzeugname eingeben.", true); return; }
-
-  const { data, error } = await supabase
-    .from(TBL_FZ)
-    .insert({ name, kenner, fuel, km })
-    .select().single();
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-
-  $("vName").value = ""; $("vKenner").value = ""; $("vKm").value = "";
-  setStatus("Fahrzeug angelegt.");
-  await loadVehicles();
-  selectVehicle(data.id);
-}
-
-async function editVehicle(v) {
-  const name   = prompt("Name:", v.name);                 if (!name) return;
-  const kenner = prompt("Kennzeichen:", v.kenner || "");
-  const fuel   = prompt("Kraftstoff:", v.fuel || "Benzin");
-  const km     = parseInt(prompt("km-Stand:", v.km), 10);
-
-  const { error } = await supabase.from(TBL_FZ)
-    .update({ name: name.trim(), kenner: kenner.trim(), fuel: fuel.trim(),
-              km: isNaN(km) ? v.km : km })
-    .eq("id", v.id);
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  setStatus("Gespeichert.");
-  await loadVehicles();
-}
-
-async function deleteVehicle(v) {
-  if (!confirm("„" + v.name + "“ und alle Belege löschen?")) return;
-  const { error } = await supabase.from(TBL_FZ).delete().eq("id", v.id);
-  if (error) { setStatus("Fehler: " + error.message, true); return; }
-  setStatus("Fahrzeug gelöscht.");
-  await loadVehicles();
 }
 
 async function selectVehicle(id) {
@@ -351,7 +296,7 @@ function addEntry(e) {
   supabase.from(TBL_BE).insert(payload).then(({ error }) => {
     if (error) { setStatus("Fehler: " + error.message, true); return; }
     formEl.reset();
-    closeSheet();          // ← Pop schließen
+    closeSheet();
     setStatus("Beleg gespeichert.");
     selectVehicle(state.activeVehicleId);
   });
@@ -368,6 +313,4 @@ function deleteEntry(id) {
 
 // ================= INIT =================
 formEl.addEventListener("submit", addEntry);
-$("addVehicleBtn").addEventListener("click", addVehicle);
-$("vName").addEventListener("keydown", (e) => { if (e.key === "Enter") addVehicle(); });
 initAuth();
