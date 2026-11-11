@@ -1,96 +1,120 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="light">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tankbuch</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tankbuch">
+  <meta name="theme-color" content="#F2F2F7">
+  <title>⛽ Tankbuch</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ============ LOGIN ============ -->
-<div id="loginScreen" class="login-wrap">
-  <div class="login-card">
-    <h1>⛽ Tankbuch</h1>
-    <p class="login-sub">Bitte anmelden</p>
-    <form id="loginForm">
-      <label>E-Mail
-        <input id="loginEmail" type="email" autocomplete="email" required>
-      </label>
-      <label>Passwort
-        <input id="loginPass" type="password" autocomplete="current-password" required>
-      </label>
-      <button type="submit" id="loginBtn">Anmelden</button>
-      <div id="loginError" class="login-error"></div>
-    </form>
-  </div>
-</div>
-
-<!-- ============ APP ============ -->
-<div id="appScreen" style="display:none">
-  <div class="app-header">
-    <h1>Tankbuch</h1>
-    <button id="logoutBtn" class="logout-btn">Abmelden</button>
+  <!-- ==================== LOGIN ==================== -->
+  <div id="loginScreen" class="login-wrap">
+    <div class="login-card">
+      <h1>⛽ Tankbuch</h1>
+      <p class="login-sub">Bitte anmelden</p>
+      <form id="loginForm">
+        <label>E-Mail
+          <input type="email" id="loginEmail" autocomplete="email" required>
+        </label>
+        <label>Passwort
+          <input type="password" id="loginPass" autocomplete="current-password" required>
+        </label>
+        <button type="submit" id="loginBtn">Anmelden</button>
+        <div id="loginError" class="login-error"></div>
+      </form>
+    </div>
   </div>
 
-  <!-- Fahrzeuge (nur Auswahl, kein Anlegen mehr) -->
-  <section id="vehicleSection">
-    <div id="vehicleTabs"></div>
-  </section>
+  <!-- ==================== APP ==================== -->
+  <div id="appScreen" style="display:none">
 
-  <!-- Tankbeleg -->
-  <section id="formSection">
-    <h2>Neuer Tankbeleg</h2>
-    <form id="entryForm">
-      <label>Datum
-        <input id="fDatum" type="date" required>
-      </label>
-      <label>km-Stand
-        <input id="fKm" type="number" min="0" step="1" required>
-      </label>
-      <label>Liter (Menge)
-        <input id="fMenge" type="number" min="0" step="0.01" required>
-      </label>
-      <label>€ / Liter
-        <input id="fPreis" type="number" min="0" step="0.001" required>
-      </label>
-      <label>Reifen (Radgröße)
-        <select id="fRadae">
-          <option>Sommer</option>
-          <option>Winter</option>
-          <option>Allwetter</option>
+    <!-- Sticky Header -->
+    <header class="app-header">
+      <h1>Tankbuch</h1>
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-btn" title="Dunkelmodus umschalten">🌙</button>
+        <button id="logoutBtn" class="logout-btn">Abmelden</button>
+      </div>
+    </header>
+
+    <!-- Fahrzeuge -->
+    <section class="vehicles-section">
+      <h2>Fahrzeuge</h2>
+      <div id="vehicleTabs" class="vehicle-tabs"></div>
+      <div id="addVehicleRow">
+        <input type="text" id="vName" placeholder="Fahrzeugname">
+        <input type="text" id="vKenner" placeholder="Kennzeichen">
+        <select id="vFuel">
+          <option>Benzin</option>
+          <option>Diesel</option>
+          <option>Autogas</option>
+          <option>Elektro</option>
+          <option>Hybrid</option>
         </select>
-      </label>
-      <label>Tankart
-        <select id="fVoll">
-          <option value="true">Volltankung</option>
-          <option value="false">Teiltankung</option>
-        </select>
-      </label>
-      <label>Bemerkung
-        <input id="fBemerkung" type="text" placeholder="optional">
-      </label>
-      <button type="submit">Speichern</button>
-    </form>
-    <div id="status" aria-live="polite"></div>
-  </section>
+        <input type="number" id="vKm" placeholder="km-Stand" inputmode="numeric">
+        <button id="addVehicleBtn">+ Fahrzeug</button>
+      </div>
+    </section>
 
-  <!-- Tabelle -->
-  <section id="tableSection">
-    <div id="avgConsumption"></div>
-    <table>
-      <thead>
-        <tr>
-          <th>Datum</th><th>km</th><th>Liter</th><th>€/l</th>
-          <th>Reifen</th><th>Voll</th><th>l/100 km</th><th>€/100 km</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="entriesBody"></tbody>
-    </table>
-    <div id="emptyState">Kein Fahrzeug ausgewählt.</div>
-  </section>
-</div>
+    <!-- Einträge -->
+    <section class="entries-section">
+      <div class="section-header">
+        <h2>Tankbelege</h2>
+        <button id="openEntrySheet" class="fab-btn">+ Beleg</button>
+      </div>
+      <div id="status" class="status-bar"></div>
+      <div id="entriesList" class="entries-list"></div>
+      <div id="avgConsumption" class="avg-consumption"></div>
+      <div id="emptyState" class="empty-state">Kein Fahrzeug ausgewählt.</div>
+    </section>
 
-<script type="module" src="app.js"></script>
+    <!-- ===== BOTTOM SHEET (Pop) – neuer Tankbeleg ===== -->
+    <div id="entrySheetOverlay" class="sheet-overlay" style="display:none">
+      <div id="entrySheet" class="bottom-sheet">
+        <div class="sheet-grabber"></div>
+        <h3>Neuer Tankbeleg</h3>
+        <form id="entryForm" class="sheet-form">
+          <label>Datum
+            <input type="date" id="fDatum">
+          </label>
+          <label>km-Stand
+            <input type="number" id="fKm" placeholder="z. B. 42000" inputmode="numeric">
+          </label>
+          <label>Liter (Menge)
+            <input type="number" id="fMenge" placeholder="z. B. 52.5" step="0.1" inputmode="decimal">
+          </label>
+          <label>€ / Liter
+            <input type="number" id="fPreis" placeholder="z. B. 1.899" step="0.001" inputmode="decimal">
+          </label>
+          <label>Reifen (Radgröße)
+            <select id="fRadae">
+              <option value="Sommer">Sommer</option>
+              <option value="Winter">Winter</option>
+              <option value="Allwetter">Allwetter</option>
+            </select>
+          </label>
+          <label>Tankart
+            <select id="fVoll">
+              <option value="true">Volltankung</option>
+              <option value="false">Teiltankung</option>
+            </select>
+          </label>
+          <label>Bemerkung
+            <input type="text" id="fBemerkung" placeholder="Optional">
+          </label>
+          <button type="submit" class="sheet-submit">Speichern</button>
+        </form>
+        <button type="button" id="sheetClose" class="sheet-close">✕</button>
+      </div>
+    </div>
+
+  </div><!-- /appScreen -->
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
