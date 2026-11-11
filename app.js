@@ -14,7 +14,6 @@ const state = { vehicles: [], activeVehicleId: null, entries: [] };
 const themeToggleEl = $("themeToggle");
 
 function initTheme() {
-  // Dunkelmodus ist jetzt der Standard, wenn noch nichts gespeichert ist.
   const saved = localStorage.getItem("tankbuch-theme");
   const theme = saved || "dark";
   applyTheme(theme);
@@ -168,7 +167,7 @@ async function selectVehicle(id) {
   renderEntries();
 }
 
-// ================= BELEGE – CARD LAYOUT =================
+// ================= BELEGE – tabellarisch, 2 Zeilen pro Beleg =================
 function computeWithConsumption(entries) {
   const sorted = [...entries].sort((a, b) => {
     if (a.datum !== b.datum) return a.datum < b.datum ? -1 : 1;
@@ -197,6 +196,13 @@ function fmtDate(iso) {
   });
 }
 
+function mkSpan(cls, text) {
+  const s = document.createElement("span");
+  s.className = cls;
+  s.textContent = text;
+  return s;
+}
+
 function renderEntries() {
   const listEl = $("entriesList");
   listEl.innerHTML = "";
@@ -210,64 +216,47 @@ function renderEntries() {
   }
   emptyEl.style.display = "none";
 
-  rows.reverse().forEach(r => {
-    const card = document.createElement("div");
-    card.className = "entry-card";
+  // Kopfzeile (Spaltenbeschriftung)
+  const head = document.createElement("div");
+  head.className = "entry-row entry-head";
+  const headLine = document.createElement("div");
+  headLine.className = "entry-line";
+  [["e-date","Datum"], ["e-km","km"], ["e-val","l"], ["e-val","l/100"], ["e-val","€/100"]]
+    .forEach(([cls, txt]) => headLine.appendChild(mkSpan(cls, txt)));
+  head.appendChild(headLine);
+  listEl.appendChild(head);
 
-    // Header
-    const header = document.createElement("div");
-    header.className = "entry-header";
-    const dateSpan = document.createElement("span");
-    dateSpan.className = "entry-date";
-    dateSpan.textContent = fmtDate(r.datum);
-    const kmSpan = document.createElement("span");
-    kmSpan.className = "entry-km";
-    kmSpan.textContent = fmtKm(r.km) + " km";
+  // Belege – jeder kompakt in 2 Zeilen
+  rows.reverse().forEach(r => {
+    const row = document.createElement("div");
+    row.className = "entry-row";
+
+    // Zeile 1 – Hauptwerte
+    const l1 = document.createElement("div");
+    l1.className = "entry-line entry-line-1";
+    l1.appendChild(mkSpan("e-date", fmtDate(r.datum)));
+    l1.appendChild(mkSpan("e-km", fmtKm(r.km) + " km"));
+    l1.appendChild(mkSpan("e-val", Number(r.menge).toFixed(1) + " l"));
+    l1.appendChild(mkSpan("e-val hl", fmt(r.cons) + " l/100"));
+    l1.appendChild(mkSpan("e-val hl", fmt(r.cost100, 2) + " €/100"));
+
+    // Zeile 2 – Nebenwerte + Löschen
+    const l2 = document.createElement("div");
+    l2.className = "entry-line entry-line-2";
+    l2.appendChild(mkSpan("e-sub", Number(r.preis).toFixed(2) + " €/l"));
+    l2.appendChild(mkSpan("e-sub", r.radae || "–"));
+    l2.appendChild(mkSpan("e-sub", r.voll ? "Voll" : "Teil"));
+    if (r.bemerkung) l2.appendChild(mkSpan("e-remark", r.bemerkung));
+
     const delBtn = document.createElement("button");
     delBtn.className = "entry-del";
     delBtn.title = "Beleg löschen";
     delBtn.textContent = "✕";
     delBtn.addEventListener("click", () => deleteEntry(r.id));
-    header.append(dateSpan, kmSpan, delBtn);
-    card.appendChild(header);
+    l2.appendChild(delBtn);
 
-    // Stats grid
-    const grid = document.createElement("div");
-    grid.className = "entry-grid";
-
-    const stats = [
-      { label: "Menge",    value: Number(r.menge).toFixed(1) + " l" },
-      { label: "Preis",    value: Number(r.preis).toFixed(3) + " €/l" },
-      { label: "Reifen",   value: r.radae || "–" },
-      { label: "Tankart",  value: r.voll ? "Voll" : "Teil" },
-      { label: "Verbrauch",value: fmt(r.cons) + " l/100km", hl: r.cons != null },
-      { label: "Kosten",   value: fmt(r.cost100, 2) + " €/100km", hl: r.cost100 != null },
-    ];
-
-    stats.forEach(s => {
-      const stat = document.createElement("div");
-      stat.className = "entry-stat";
-      const lbl = document.createElement("span");
-      lbl.className = "entry-stat-label";
-      lbl.textContent = s.label;
-      const val = document.createElement("span");
-      val.className = "entry-stat-value" + (s.hl ? " highlight" : "");
-      val.textContent = s.value;
-      stat.append(lbl, val);
-      grid.appendChild(stat);
-    });
-
-    card.appendChild(grid);
-
-    // Bemerkung
-    if (r.bemerkung) {
-      const rem = document.createElement("div");
-      rem.className = "entry-remark";
-      rem.textContent = r.bemerkung;
-      card.appendChild(rem);
-    }
-
-    listEl.appendChild(card);
+    row.append(l1, l2);
+    listEl.appendChild(row);
   });
 
   const valid = rows.filter(r => r.cons != null);
