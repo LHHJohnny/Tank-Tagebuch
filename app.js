@@ -10,6 +10,32 @@ const TBL_BE = "belege";
 const $ = (id) => document.getElementById(id);
 const state = { vehicles: [], activeVehicleId: null, entries: [] };
 
+// ================= DARK MODE =================
+const themeToggleEl = $("themeToggle");
+
+function initTheme() {
+  const saved = localStorage.getItem("tankbuch-theme");
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = saved || (prefersDark ? "dark" : "light");
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  themeToggleEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = theme === "dark" ? "#000000" : "#F2F2F7";
+}
+
+themeToggleEl.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+  applyTheme(next);
+  localStorage.setItem("tankbuch-theme", next);
+});
+
+initTheme();
+
 // ================= AUTH =================
 const loginScreenEl = $("loginScreen");
 const appScreenEl   = $("appScreen");
@@ -20,7 +46,7 @@ const logoutBtnEl   = $("logoutBtn");
 
 async function initAuth() {
   const { data } = await supabase.auth.getSession();
-  if (data?.session) { showApp(); } else { showLogin(); }
+  if (data?.session) showApp(); else showLogin();
   supabase.auth.onAuthStateChange((_e, session) => {
     if (session) showApp(); else showLogin();
   });
@@ -28,13 +54,13 @@ async function initAuth() {
 
 function showLogin() {
   loginScreenEl.style.display = "flex";
-  appScreenEl.style.display = "none";
+  appScreenEl.style.display   = "none";
   loginErrorEl.textContent = "";
 }
 
 function showApp() {
   loginScreenEl.style.display = "none";
-  appScreenEl.style.display = "block";
+  appScreenEl.style.display   = "block";
   loadVehicles();
 }
 
@@ -52,20 +78,46 @@ loginFormEl.addEventListener("submit", async (e) => {
 
 logoutBtnEl.addEventListener("click", () => supabase.auth.signOut());
 
+// ================= BOTTOM SHEET (Pop) =================
+const sheetOverlay  = $("entrySheetOverlay");
+const sheetEl       = $("entrySheet");
+const openSheetBtn  = $("openEntrySheet");
+const sheetCloseBtn = $("sheetClose");
+
+function openSheet() {
+  sheetOverlay.style.display = "flex";
+  // Datum vorbelegen
+  const fDatum = $("fDatum");
+  if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
+  // Fokus auf erstes Feld
+  setTimeout(() => $("fKm").focus(), 100);
+}
+
+function closeSheet() {
+  sheetOverlay.style.display = "none";
+}
+
+openSheetBtn.addEventListener("click", openSheet);
+sheetCloseBtn.addEventListener("click", closeSheet);
+sheetOverlay.addEventListener("click", (e) => {
+  if (e.target === sheetOverlay) closeSheet();
+});
+
 // ================= FAHRZEUGE =================
 const vehicleTabsEl = $("vehicleTabs");
-const tableBodyEl   = $("entriesBody");
-const emptyEl       = $("emptyState");
 const statusEl      = $("status");
 const avgEl         = $("avgConsumption");
+const emptyEl       = $("emptyState");
 const formEl        = $("entryForm");
 
 function setStatus(msg, isErr = false) {
   statusEl.textContent = msg;
-  statusEl.style.color = isErr ? "#d0342c" : "#3a8a3a";
+  statusEl.style.color = isErr ? "var(--red)" : "var(--green)";
   if (msg) setTimeout(() => { statusEl.textContent = ""; }, 4000);
 }
+
 function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
+function fmtKm(n)        { return n == null ? "–" : Number(n).toLocaleString("de-DE"); }
 
 async function loadVehicles() {
   const { data, error } = await supabase.from(TBL_FZ).select().order("name");
@@ -79,10 +131,9 @@ async function loadVehicles() {
     await selectVehicle(state.activeVehicleId);
   } else {
     state.activeVehicleId = null;
-    tableBodyEl.innerHTML = "";
-    avgEl.textContent = "";
     emptyEl.style.display = "block";
-    emptyEl.textContent = "Keine Fahrzeuge in der Datenbank.";
+    emptyEl.textContent   = "Noch kein Fahrzeug angelegt.";
+    avgEl.textContent = "";
   }
 }
 
@@ -96,10 +147,10 @@ function renderVehicleTabs() {
     name.className = "tab-name";
     name.textContent = v.name;
     if (v.kenner) {
+      name.appendChild(document.createTextNode(" "));
       const kn = document.createElement("span");
       kn.className = "tab-kenner";
       kn.textContent = v.kenner;
-      name.appendChild(document.createTextNode(" "));
       name.appendChild(kn);
     }
     name.addEventListener("click", () => selectVehicle(v.id));
@@ -108,27 +159,47 @@ function renderVehicleTabs() {
     renameBtn.className = "icon-btn";
     renameBtn.title = "Umbenennen / bearbeiten";
     renameBtn.textContent = "✎";
-    renameBtn.addEventListener("click", () => editVehicle(v));
+    renameBtn.addEventListener("click", (e) => { e.stopPropagation(); editVehicle(v); });
 
     const delBtn = document.createElement("button");
     delBtn.className = "icon-btn del";
     delBtn.title = "Fahrzeug löschen";
     delBtn.textContent = "✕";
-    delBtn.addEventListener("click", () => deleteVehicle(v));
+    delBtn.addEventListener("click", (e) => { e.stopPropagation(); deleteVehicle(v); });
 
     tab.append(name, renameBtn, delBtn);
     vehicleTabsEl.appendChild(tab);
   }
 }
 
+async function addVehicle() {
+  const name   = $("vName").value.trim();
+  const kenner = $("vKenner").value.trim();
+  const fuel   = $("vFuel").value;
+  const km     = parseInt($("vKm").value, 10) || 0;
+  if (!name) { setStatus("Bitte Fahrzeugname eingeben.", true); return; }
+
+  const { data, error } = await supabase
+    .from(TBL_FZ)
+    .insert({ name, kenner, fuel, km })
+    .select().single();
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+
+  $("vName").value = ""; $("vKenner").value = ""; $("vKm").value = "";
+  setStatus("Fahrzeug angelegt.");
+  await loadVehicles();
+  selectVehicle(data.id);
+}
+
 async function editVehicle(v) {
-  const name   = prompt("Name:", v.name);       if (!name) return;
+  const name   = prompt("Name:", v.name);                 if (!name) return;
   const kenner = prompt("Kennzeichen:", v.kenner || "");
-  const fuel   = prompt("Kraftstoff (Benzin/Diesel/Autogas/Elektro/Hybrid):", v.fuel || "Benzin");
+  const fuel   = prompt("Kraftstoff:", v.fuel || "Benzin");
   const km     = parseInt(prompt("km-Stand:", v.km), 10);
 
   const { error } = await supabase.from(TBL_FZ)
-    .update({ name: name.trim(), kenner: kenner.trim(), fuel: fuel.trim(), km: isNaN(km) ? v.km : km })
+    .update({ name: name.trim(), kenner: kenner.trim(), fuel: fuel.trim(),
+              km: isNaN(km) ? v.km : km })
     .eq("id", v.id);
   if (error) { setStatus("Fehler: " + error.message, true); return; }
   setStatus("Gespeichert.");
@@ -152,11 +223,11 @@ async function selectVehicle(id) {
   renderEntries();
 }
 
-// ================= BELEGE =================
+// ================= BELEGE – CARD LAYOUT =================
 function computeWithConsumption(entries) {
   const sorted = [...entries].sort((a, b) => {
     if (a.datum !== b.datum) return a.datum < b.datum ? -1 : 1;
-    if (a.km !== b.km) return a.km - b.km;
+    if (a.km !== b.km)       return a.km - b.km;
     return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
   });
   let prevKm = null;
@@ -164,45 +235,96 @@ function computeWithConsumption(entries) {
     let cons = null, cost100 = null, distance = null;
     if (prevKm !== null && e.km > prevKm) {
       distance = e.km - prevKm;
-      if (e.menge > 0) cons = (e.menge / distance) * 100;
-      if (e.menge > 0 && e.preis > 0) cost100 = (e.menge * e.preis) / distance * 100;
+      if (e.menge > 0) cons   = (e.menge / distance) * 100;
+      if (e.menge > 0 && e.preis > 0)
+        cost100 = (e.menge * e.preis) / distance * 100;
     }
     prevKm = e.km;
     return { ...e, distance, cons, cost100 };
   });
 }
 
+function fmtDate(iso) {
+  if (!iso) return "–";
+  const d = new Date(iso);
+  return d.toLocaleDateString("de-DE", {
+    day: "2-digit", month: "2-digit", year: "numeric"
+  });
+}
+
 function renderEntries() {
+  const listEl = $("entriesList");
+  listEl.innerHTML = "";
   const rows = computeWithConsumption(state.entries);
-  tableBodyEl.innerHTML = "";
+
   if (rows.length === 0) {
     emptyEl.style.display = "block";
-    emptyEl.textContent = "Noch keine Belege für dieses Fahrzeug.";
+    emptyEl.textContent   = "Noch keine Belege für dieses Fahrzeug.";
     avgEl.textContent = "";
     return;
   }
   emptyEl.style.display = "none";
+
   rows.reverse().forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      "<td>" + r.datum + "</td>" +
-      "<td>" + Number(r.km).toLocaleString("de-DE") + "</td>" +
-      "<td>" + Number(r.menge).toFixed(1) + "</td>" +
-      "<td>" + Number(r.preis).toFixed(3) + "</td>" +
-      "<td>" + (r.radae || "–") + "</td>" +
-      "<td>" + (r.voll ? "Voll" : "Teil") + "</td>" +
-      "<td>" + fmt(r.cons) + "</td>" +
-      "<td>" + fmt(r.cost100, 2) + " €</td>";
-    const tda = document.createElement("td");
+    const card = document.createElement("div");
+    card.className = "entry-card";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "entry-header";
+    const dateSpan = document.createElement("span");
+    dateSpan.className = "entry-date";
+    dateSpan.textContent = fmtDate(r.datum);
+    const kmSpan = document.createElement("span");
+    kmSpan.className = "entry-km";
+    kmSpan.textContent = fmtKm(r.km) + " km";
     const delBtn = document.createElement("button");
-    delBtn.className = "icon-btn row-del";
+    delBtn.className = "entry-del";
     delBtn.title = "Beleg löschen";
     delBtn.textContent = "✕";
     delBtn.addEventListener("click", () => deleteEntry(r.id));
-    tda.appendChild(delBtn);
-    tr.appendChild(tda);
-    tableBodyEl.appendChild(tr);
+    header.append(dateSpan, kmSpan, delBtn);
+    card.appendChild(header);
+
+    // Stats grid
+    const grid = document.createElement("div");
+    grid.className = "entry-grid";
+
+    const stats = [
+      { label: "Menge",    value: Number(r.menge).toFixed(1) + " l" },
+      { label: "Preis",    value: Number(r.preis).toFixed(3) + " €/l" },
+      { label: "Reifen",   value: r.radae || "–" },
+      { label: "Tankart",  value: r.voll ? "Voll" : "Teil" },
+      { label: "Verbrauch",value: fmt(r.cons) + " l/100km", hl: r.cons != null },
+      { label: "Kosten",   value: fmt(r.cost100, 2) + " €/100km", hl: r.cost100 != null },
+    ];
+
+    stats.forEach(s => {
+      const stat = document.createElement("div");
+      stat.className = "entry-stat";
+      const lbl = document.createElement("span");
+      lbl.className = "entry-stat-label";
+      lbl.textContent = s.label;
+      const val = document.createElement("span");
+      val.className = "entry-stat-value" + (s.hl ? " highlight" : "");
+      val.textContent = s.value;
+      stat.append(lbl, val);
+      grid.appendChild(stat);
+    });
+
+    card.appendChild(grid);
+
+    // Bemerkung
+    if (r.bemerkung) {
+      const rem = document.createElement("div");
+      rem.className = "entry-remark";
+      rem.textContent = r.bemerkung;
+      card.appendChild(rem);
+    }
+
+    listEl.appendChild(card);
   });
+
   const valid = rows.filter(r => r.cons != null);
   avgEl.textContent = valid.length
     ? "Ø Verbrauch: " + fmt(valid.reduce((s, r) => s + r.cons, 0) / valid.length) + " l/100 km"
@@ -223,11 +345,13 @@ function addEntry(e) {
     bemerkung:   $("fBemerkung").value.trim() || null,
   };
   if (!payload.km || isNaN(payload.menge) || isNaN(payload.preis)) {
-    setStatus("Bitte km, Menge und Preis korrekt ausfüllen.", true); return;
+    setStatus("Bitte km, Menge und Preis korrekt ausfüllen.", true);
+    return;
   }
   supabase.from(TBL_BE).insert(payload).then(({ error }) => {
     if (error) { setStatus("Fehler: " + error.message, true); return; }
     formEl.reset();
+    closeSheet();          // ← Pop schließen
     setStatus("Beleg gespeichert.");
     selectVehicle(state.activeVehicleId);
   });
@@ -244,4 +368,6 @@ function deleteEntry(id) {
 
 // ================= INIT =================
 formEl.addEventListener("submit", addEntry);
+$("addVehicleBtn").addEventListener("click", addVehicle);
+$("vName").addEventListener("keydown", (e) => { if (e.key === "Enter") addVehicle(); });
 initAuth();
