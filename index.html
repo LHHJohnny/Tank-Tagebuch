@@ -1,511 +1,263 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Tankbuch</title>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif;
-  max-width:940px;margin:0 auto;padding:16px;
-  background:#1c1c1e;color:#f2f2f7;
-  -webkit-font-smoothing:antialiased;
-}
-h1{font-size:28px;font-weight:700;margin:0 0 4px;color:#fff;letter-spacing:-.3px}
-#status{
-  font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px;display:none;
-  line-height:1.4;
-}
-#status.ok{display:block;background:#1e3a1e;color:#a3d9a3;border:1px solid #2e5a2e}
-#status.err{display:block;background:#3a1e1e;color:#f5a3a3;border:1px solid #5a2e2e}
-#status.info{display:block;background:#1e2a3a;color:#a3c8f5;border:1px solid #2e4a5a}
-.bar{margin-bottom:14px}
-button{
-  padding:12px 16px;border:1px solid #3a3a3c;background:#2c2c2e;border-radius:12px;
-  font-size:15px;color:#f2f2f7;font-weight:500;cursor:pointer;font-family:inherit;
-}
-button.primary{background:#007aff;color:#fff;border-color:#007aff}
-button:active{opacity:.6;transform:scale(.98)}
-button:disabled{opacity:.35}
-#vehicleTabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.vtab{
-  padding:8px 14px;border:1px solid #3a3a3c;border-radius:20px;
-  background:#2c2c2e;font-size:14px;color:#f2f2f7;font-weight:500;
-}
-.vtab.active{background:#007aff;color:#fff;border-color:#007aff}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-.stat{
-  background:#2c2c2e;border:1px solid #3a3a3c;border-radius:12px;
-  padding:10px 8px;text-align:center;
-}
-.stat b{display:block;font-size:15px;color:#0a84ff;margin-bottom:2px;font-weight:600}
-.stat span{font-size:10px;color:#8e8e93;letter-spacing:.3px}
-.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid #3a3a3c;margin-top:8px}
-table{width:100%;border-collapse:collapse;background:#2c2c2e;font-size:13px;min-width:700px}
-th,td{border-bottom:1px solid #3a3a3c;padding:8px 7px;text-align:right;white-space:nowrap}
-th{
-  background:#1c1c1e;color:#8e8e93;font-size:11px;font-weight:600;
-  letter-spacing:.3px;
-}
-td.l{text-align:left}
-.action-btn{
-  background:none;border:none;padding:4px 6px;font-size:18px;cursor:pointer;
-  line-height:1;display:inline-block;vertical-align:middle;
-}
-.action-btn:active{opacity:.5}
-.action-btn svg{width:20px;height:20px;fill:#8e8e93}
-.action-btn.del svg{fill:#ff6b6b}
-.modal{
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  background:rgba(0,0,0,.6);display:none;
-  align-items:flex-end;justify-content:center;z-index:100;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-}
-.modal.open{display:flex}
-.card{
-  background:#2c2c2e;border-radius:20px 20px 0 0;
-  padding:24px 20px 32px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;
-}
-.card h2{font-size:17px;font-weight:600;margin:0 0 12px;color:#fff}
-label{display:block;font-size:13px;margin-top:14px;color:#8e8e93;font-weight:500}
-input,select{
-  width:100%;padding:12px;margin-top:4px;
-  border:1px solid #3a3a3c;border-radius:10px;font-size:16px;
-  background:#1c1c1e;color:#f2f2f7;font-family:inherit;
-}
-input:focus,select:focus{outline:none;border-color:#007aff}
-select option{background:#2c2c2e;color:#f2f2f7}
-.row2{display:flex;gap:10px}.row2>div{flex:1}
-.actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
-.actions button{flex:1}
-.empty{text-align:center;color:#8e8e93;padding:40px 10px;font-size:15px}
-.footer{margin-top:28px;padding-top:14px;border-top:1px solid #3a3a3c;text-align:center}
-.footer a{color:#8e8e93;text-decoration:none;font-size:14px}
-.footer a:active{color:#007aff}
-</style>
-</head>
-<body>
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-<h1>Tankbuch</h1>
-<div id="status"></div>
+const SUPABASE_URL = "https://pvhlufhswnwiiujbtbeg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_EWCHyIJv_dKzkVyQRrgrEQ_-5hYaef8";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<div class="bar">
-  <button class="primary" id="btnAddBeleg">Neuer Tankbeleg</button>
-</div>
+// ================= AUTH =================
+const loginScreenEl = document.getElementById("loginScreen");
+const appScreenEl   = document.getElementById("appScreen");
+const loginFormEl   = document.getElementById("loginForm");
+const loginErrorEl  = document.getElementById("loginError");
+const loginBtnEl    = document.getElementById("loginBtn");
+const logoutBtnEl   = document.getElementById("logoutBtn");
 
-<div id="vehicleTabs"></div>
-<div id="main"></div>
+let state = { vehicles: [], activeVehicleId: null, entries: [] };
 
-<div class="footer">
-  <a href="#" id="btnAddVeh">+ Fahrzeug anlegen</a>
-</div>
-
-<!-- Fahrzeug-Dialog -->
-<div class="modal" id="mVeh">
-  <div class="card">
-    <h2>Neues Fahrzeug</h2>
-    <label>Name</label>
-    <input id="vName" placeholder="z. B. Mein Auto">
-    <div class="row2">
-      <div><label>Kennzeichen</label><input id="vKenner" placeholder="ABC-123"></div>
-      <div><label>Kraftstoffart</label>
-        <select id="vFuel">
-          <option value="benzin">Benzin</option>
-          <option value="diesel">Diesel</option>
-          <option value="elektro">Elektro</option>
-        </select>
-      </div>
-    </div>
-    <label>Kilometerstand (km)</label>
-    <input id="vKm" type="text" inputmode="numeric" placeholder="z. B. 85000">
-    <div class="actions">
-      <button id="vCancel">Abbrechen</button>
-      <button class="primary" id="vSave">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- Tankbeleg-Dialog -->
-<div class="modal" id="mBeleg">
-  <div class="card">
-    <h2 id="belegTitle">Neuer Tankbeleg</h2>
-    <label>Datum</label>
-    <input id="bDatum" type="date">
-    <div class="row2">
-      <div><label id="bMengeLabel">Tankmenge (l)</label><input id="bMenge" type="number" min="0" step="0.01"></div>
-      <div><label id="bPreisLabel">Preis je Liter (€)</label><input id="bPreis" type="number" min="0" step="0.001"></div>
-    </div>
-    <div class="row2">
-      <div><label>Kilometerstand (km)</label><input id="bKm" type="text" inputmode="numeric" placeholder="z. B. 85120"></div>
-      <div><label>Tankart</label>
-        <select id="bVoll">
-          <option value="true">Volltankung</option>
-          <option value="false">Teiltankung</option>
-        </select>
-      </div>
-    </div>
-    <label>Räder</label>
-    <select id="bRadae">
-      <option value="sommer">Sommerreifen</option>
-      <option value="winter">Winterreifen</option>
-    </select>
-    <label>Bemerkung</label>
-    <input id="bBemerkung" type="text" placeholder="z. B. Autobahn, Stadt, …">
-    <div class="actions">
-      <button id="bCancel">Abbrechen</button>
-      <button class="primary" id="bSave">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
-<script>
-"use strict";
-
-var SUPABASE_URL = "https://jfgkghilikuhjijfvnjc.supabase.co";
-var SUPABASE_KEY = "sb_publishable_3kHpVg2NKf3MROQgYuIYjg_WMcg4h8l";
-
-var sb;
-try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
-catch(e) {
-  var el = document.getElementById("status");
-  el.className = "err";
-  el.textContent = "Supabase nicht erreichbar: " + e.message;
-  el.style.display = "block";
-  throw e;
-}
-
-var vehicles = [];
-var activeVehId = null;
-var editBelegId = null;
-
-var fuelLabel = { benzin:"Benzin", diesel:"Diesel", elektro:"Elektro" };
-var fuelUnit = { benzin:"l", diesel:"l", elektro:"kWh" };
-var priceUnit = { benzin:"€/l", diesel:"€/l", elektro:"€/kWh" };
-
-function $(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0,10); }
-function fmt(n, d) {
-  if (d === undefined) d = 2;
-  if (n == null || isNaN(n)) return "\u2013";
-  return Number(n).toFixed(d);
-}
-function fmtKm(n) {
-  if (n == null || isNaN(n)) return "\u2013";
-  return Number(n).toLocaleString("de-DE");
-}
-function setStatus(msg, type) {
-  var el = $("status");
-  if (!msg) { el.style.display = "none"; el.textContent = ""; return; }
-  el.textContent = msg;
-  el.className = type || "info";
-  el.style.display = "block";
-}
-function findVeh(id) {
-  for (var i = 0; i < vehicles.length; i++) {
-    if (vehicles[i].id === id) return vehicles[i];
+async function initAuth() {
+  // Bestehende Session prüfen
+  const { data } = await supabase.auth.getSession();
+  if (data?.session) {
+    showApp();
+  } else {
+    showLogin();
   }
-  return null;
+
+  // Reactiv auf Login/Logout
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      showApp();
+    } else {
+      showLogin();
+    }
+  });
 }
 
-/* km-Eingabe mit Tausenderpunkt */
-function formatKmInput(el) {
-  var raw = el.value.replace(/[^0-9]/g, "");
-  if (!raw) { el.value = ""; return; }
-  el.value = parseInt(raw, 10).toLocaleString("de-DE");
+function showLogin() {
+  loginScreenEl.style.display = "flex";
+  appScreenEl.style.display = "none";
+  loginErrorEl.textContent = "";
 }
-function rawKmInput(el) {
-  return parseInt(el.value.replace(/[^0-9]/g, ""), 10) || 0;
+
+function showApp() {
+  loginScreenEl.style.display = "none";
+  appScreenEl.style.display = "block";
+  loadVehicles();
 }
-["vKm","bKm"].forEach(function(id) {
-  var el = $(id);
-  el.addEventListener("input", function() { formatKmInput(el); });
+
+loginFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const pass  = document.getElementById("loginPass").value;
+  loginBtnEl.disabled = true;
+  loginBtnEl.textContent = "…";
+  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  loginBtnEl.disabled = false;
+  loginBtnEl.textContent = "Anmelden";
+  if (error) {
+    loginErrorEl.textContent = "Login fehlgeschlagen: " + error.message;
+  }
+  // onAuthStateChange übernimmt showApp()
 });
 
-/* iOS-Icons */
-var svgPencil = '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
-var svgEraser = '<svg viewBox="0 0 24 24"><path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.78-.78 2.05 0 2.83l4.27 4.27c.39.39.9.59 1.41.59h6.73l4.41-4.41L15.14 3zm-5.67 14.67L4.67 13.83 14.33 4.17l5.83 5.83-10.47 7.67z"/></svg>';
+logoutBtnEl.addEventListener("click", () => supabase.auth.signOut());
 
-/* ── Berechnung ── */
-function compute(belege) {
-  var sorted = belege.slice().sort(function(a,b){
-    return a.km - b.km || (a.datum||"").localeCompare(b.datum||"");
-  });
-  var lastFullKm = null, accM = 0, accC = 0;
-  var totM = 0, totD = 0, totC = 0;
-  var info = {};
-  for (var i = 0; i < sorted.length; i++) {
-    var b = sorted[i];
-    var diffKm = i > 0 ? b.km - sorted[i-1].km : null;
-    var verbrauch = null, kosten100 = null;
-    if (b.voll) {
-      if (lastFullKm !== null) {
-        var dist = b.km - lastFullKm;
-        if (dist > 0) {
-          var m = accM + b.menge;
-          var c = accC + b.menge * b.preis;
-          verbrauch = m / dist * 100;
-          kosten100 = c / dist * 100;
-          totM += m; totD += dist; totC += c;
-        }
-      }
-      accM = 0; accC = 0; lastFullKm = b.km;
-    } else {
-      accM += b.menge;
-      accC += b.menge * b.preis;
+// ================= FAHRZEUGE =================
+const vehicleTabsEl = document.getElementById("vehicleTabs");
+const formSectionEl = document.getElementById("formSection");
+const formEl        = document.getElementById("entryForm");
+const tableBodyEl   = document.getElementById("entriesBody");
+const emptyEl       = document.getElementById("emptyState");
+const statusEl      = document.getElementById("status");
+const avgEl         = document.getElementById("avgConsumption");
+
+function setStatus(msg, isErr = false) {
+  statusEl.textContent = msg;
+  statusEl.style.color = isErr ? "#d0342c" : "#3a8a3a";
+  if (msg) setTimeout(() => { statusEl.textContent = ""; }, 4000);
+}
+
+function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
+
+async function loadVehicles() {
+  const { data, error } = await supabase.from("vehicles").select().order("name");
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  state.vehicles = data || [];
+  renderVehicleTabs();
+  if (state.vehicles.length > 0) {
+    if (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId)) {
+      state.activeVehicleId = state.vehicles[0].id;
     }
-    info[b.id] = { diffKm: diffKm, verbrauch: verbrauch, kosten100: kosten100 };
-  }
-  return {
-    sorted: sorted, info: info,
-    avg: totD > 0 ? totM / totD * 100 : null,
-    avgK: totD > 0 ? totC / totD * 100 : null
-  };
-}
-
-/* ── Rendering ── */
-function renderAll() {
-  var tc = $("vehicleTabs");
-  tc.innerHTML = "";
-  for (var i = 0; i < vehicles.length; i++) {
-    (function(v) {
-      var btn = document.createElement("button");
-      btn.className = "vtab" + (v.id === activeVehId ? " active" : "");
-      btn.textContent = v.name;
-      btn.onclick = function() { activeVehId = v.id; renderAll(); };
-      tc.appendChild(btn);
-    })(vehicles[i]);
-  }
-
-  var v = findVeh(activeVehId);
-  var main = $("main");
-
-  if (!v) {
-    main.innerHTML = '<div class="empty">Kein Fahrzeug vorhanden.</div>';
-    var hint = document.createElement("div");
-    hint.style.cssText = "text-align:center;margin-top:12px";
-    var btn2 = document.createElement("button");
-    btn2.className = "primary";
-    btn2.textContent = "+ Fahrzeug anlegen";
-    btn2.onclick = function() { openVehDialog(); };
-    hint.appendChild(btn2);
-    main.appendChild(hint);
-    return;
-  }
-
-  var r = compute(v.belege || []);
-  var unit = fuelUnit[v.fuel] || "l";
-  var lastKm = v.km || 0;
-  if (v.belege && v.belege.length) {
-    var maxKm = 0;
-    for (var j = 0; j < v.belege.length; j++) {
-      if (v.belege[j].km > maxKm) maxKm = v.belege[j].km;
-    }
-    lastKm = maxKm;
-  }
-
-  /* Stat-Kacheln: 3 Spalten */
-  var h = '<div class="stats">';
-  h += '<div class="stat"><b>' + fmt(r.avg) + ' ' + unit + '</b><span>\u00d8 Verbrauch / 100 km</span></div>';
-  h += '<div class="stat"><b>' + fmt(r.avgK) + ' \u20ac</b><span>\u00d8 Kosten / 100 km</span></div>';
-  h += '<div class="stat"><b>' + fmtKm(lastKm) + ' km</b><span>Letzter Stand</span></div>';
-  h += '</div>';
-
-  /* Tabelle */
-  h += '<div class="tbl-wrap"><table><thead><tr>';
-  h += '<th>Datum</th><th>km</th><th>' + unit + '</th><th>' + unit + '/100</th>';
-  h += '<th>\u0394 km</th><th>' + (priceUnit[v.fuel] || "\u20ac") + '</th>';
-  h += '<th>Art</th><th>R\u00e4der</th><th>\u20ac/100 km</th><th>Bem.</th><th></th>';
-  h += '</tr></thead><tbody>';
-
-  if (!r.sorted.length) {
-    h += '<tr><td colspan="11" class="empty">Noch keine Eintr\u00e4ge.</td></tr>';
-  }
-
-  var rev = r.sorted.slice().reverse();
-  for (var k = 0; k < rev.length; k++) {
-    var b = rev[k];
-    var c = r.info[b.id];
-    h += '<tr>';
-    h += '<td class="l">' + b.datum + '</td>';
-    h += '<td>' + fmtKm(b.km) + '</td>';
-    h += '<td>' + fmt(b.menge) + '</td>';
-    h += '<td>' + fmt(c.verbrauch) + '</td>';
-    h += '<td>' + (c.diffKm != null ? fmtKm(c.diffKm) : "\u2013") + '</td>';
-    h += '<td>' + fmt(b.preis, 3) + '</td>';
-    h += '<td class="l">' + (b.voll ? "Voll" : "Teil") + '</td>';
-    h += '<td class="l">' + (b.radae === "sommer" ? "Sommer" : "Winter") + '</td>';
-    h += '<td>' + fmt(c.kosten100) + '</td>';
-    h += '<td class="l" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:#8e8e93">' + (b.bemerkung || "") + '</td>';
-    h += '<td class="l" style="white-space:nowrap">';
-    h += '<button class="action-btn" data-eb="' + b.id + '" title="\u00c4ndern">' + svgPencil + '</button> ';
-    h += '<button class="action-btn del" data-dlb="' + b.id + '" title="L\u00f6schen">' + svgEraser + '</button>';
-    h += '</td></tr>';
-  }
-  h += '</tbody></table></div>';
-  main.innerHTML = h;
-
-  var allEb = main.querySelectorAll("[data-eb]");
-  for (var m = 0; m < allEb.length; m++) {
-    (function(el) { el.onclick = function() { openBeleg(v, el.getAttribute("data-eb")); }; })(allEb[m]);
-  }
-  var allD = main.querySelectorAll("[data-dlb]");
-  for (var n = 0; n < allD.length; n++) {
-    (function(el) { el.onclick = function() {
-      if (!confirm("Diesen Tankbeleg wirklich l\u00f6schen?")) return;
-      var id = el.getAttribute("data-dlb");
-      sb.from("belege").delete().eq("id", id).then(function(res) {
-        if (res.error) setStatus("L\u00f6schen fehlgeschlagen: " + res.error.message, "err");
-        else loadAll();
-      });
-    }; })(allD[n]);
-  }
-}
-
-/* ── Daten laden ── */
-function loadAll() {
-  setStatus("Lade Daten\u2026", "info");
-  sb.from("fahrzeuge").select("*").order("created_at").then(function(vs) {
-    if (vs.error) { setStatus("Fehler: " + vs.error.message, "err"); return; }
-    vehicles = vs.data || [];
-    if (!vehicles.length) { setStatus("Noch keine Fahrzeuge.", "info"); renderAll(); return; }
-    var chain = Promise.resolve();
-    for (var i = 0; i < vehicles.length; i++) {
-      (function(v) {
-        chain = chain.then(function() {
-          return sb.from("belege").select("*").eq("fahrzeug_id", v.id).then(function(res) {
-            if (res.error) throw new Error("Belege f\u00fcr " + v.name + ": " + res.error.message);
-            v.belege = res.data || [];
-          });
-        });
-      })(vehicles[i]);
-    }
-    chain.then(function() {
-      if (!findVeh(activeVehId)) activeVehId = vehicles[0].id;
-      setStatus("", "");
-      renderAll();
-    }).catch(function(e) { setStatus("Fehler: " + e.message, "err"); });
-  });
-}
-
-/* ── Fahrzeug anlegen ── */
-function openVehDialog() {
-  $("vName").value = "";
-  $("vKenner").value = "";
-  $("vFuel").value = "benzin";
-  $("vKm").value = "";
-  $("mVeh").classList.add("open");
-}
-$("btnAddVeh").onclick = function(e) { e.preventDefault(); openVehDialog(); };
-$("vCancel").onclick = function() { $("mVeh").classList.remove("open"); };
-$("vSave").onclick = function() {
-  var p = {
-    name: $("vName").value.trim(),
-    kenner: $("vKenner").value.trim(),
-    fuel: $("vFuel").value,
-    km: rawKmInput($("vKm"))
-  };
-  if (!p.name) { alert("Name ist Pflicht."); return; }
-  sb.from("fahrzeuge").insert(p).select().single().then(function(res) {
-    if (res.error) { setStatus("Fehler: " + res.error.message, "err"); return; }
-    activeVehId = res.data.id;
-    $("mVeh").classList.remove("open");
-    loadAll();
-  });
-};
-
-/* ── Tankbeleg ── */
-function lastTire(v) {
-  if (!v.belege || !v.belege.length) return "sommer";
-  var s = v.belege.slice().sort(function(a,b) {
-    return b.km - a.km || (b.datum||"").localeCompare(a.datum||"");
-  });
-  return s[0].radae;
-}
-
-function openBeleg(v, id) {
-  editBelegId = id || null;
-  var b = null;
-  if (id && v.belege) {
-    for (var i = 0; i < v.belege.length; i++) {
-      if (v.belege[i].id === id) { b = v.belege[i]; break; }
-    }
-  }
-  var unit = fuelUnit[v.fuel] || "l";
-  $("belegTitle").textContent = b ? "Beleg \u00e4ndern" : "Neuer Tankbeleg";
-  $("bMengeLabel").textContent = "Tankmenge (" + unit + ")";
-  $("bPreisLabel").textContent = "Preis je " + (unit === "l" ? "Liter" : "kWh") + " (\u20ac)";
-  $("bDatum").value = b ? b.datum : today();
-  $("bMenge").value = b ? b.menge : "";
-  $("bPreis").value = b ? b.preis : "";
-  $("bKm").value = b ? b.km.toLocaleString("de-DE") : (v.km ? v.km.toLocaleString("de-DE") : "");
-  $("bVoll").value = b ? String(b.voll) : "true";
-  $("bRadae").value = b ? b.radae : lastTire(v);
-  $("bBemerkung").value = b ? (b.bemerkung || "") : "";
-  $("mBeleg").classList.add("open");
-}
-
-$("btnAddBeleg").onclick = function() {
-  var v = findVeh(activeVehId);
-  if (!v) {
-    if (vehicles.length) {
-      activeVehId = vehicles[0].id;
-      renderAll();
-      openBeleg(vehicles[0], null);
-    } else {
-      setStatus("Kein Fahrzeug vorhanden. Bitte unten anlegen.", "err");
-    }
-    return;
-  }
-  openBeleg(v, null);
-};
-
-$("bCancel").onclick = function() { $("mBeleg").classList.remove("open"); };
-$("bSave").onclick = function() {
-  var v = findVeh(activeVehId);
-  if (!v) { setStatus("Kein Fahrzeug aktiv.", "err"); return; }
-  var p = {
-    fahrzeug_id: activeVehId,
-    datum: $("bDatum").value || today(),
-    menge: Number($("bMenge").value) || 0,
-    preis: Number($("bPreis").value) || 0,
-    km: rawKmInput($("bKm")),
-    voll: $("bVoll").value === "true",
-    radae: $("bRadae").value,
-    bemerkung: $("bBemerkung").value.trim()
-  };
-  if (!p.km) { alert("Bitte Kilometerstand angeben."); return; }
-  if (editBelegId) {
-    if (!confirm("Tankbeleg wirklich \u00e4ndern?")) return;
-    sb.from("belege").update(p).eq("id", editBelegId).then(function(res) {
-      if (res.error) { setStatus("Fehler: " + res.error.message, "err"); return; }
-      $("mBeleg").classList.remove("open");
-      loadAll();
-    });
+    await selectVehicle(state.activeVehicleId);
   } else {
-    sb.from("belege").insert(p).then(function(res) {
-      if (res.error) { setStatus("Fehler: " + res.error.message, "err"); return; }
-      if (p.km > (v.km || 0)) {
-        sb.from("fahrzeuge").update({ km: p.km }).eq("id", activeVehId);
-      }
-      $("mBeleg").classList.remove("open");
-      loadAll();
-    });
+    state.activeVehicleId = null;
+    tableBodyEl.innerHTML = "";
+    avgEl.textContent = "";
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "Noch kein Fahrzeug angelegt. Lege oben eines an.";
   }
-};
-
-/* Modal schließen */
-var ms = document.querySelectorAll(".modal");
-for (var mi = 0; mi < ms.length; mi++) {
-  (function(m) {
-    m.addEventListener("click", function(e) {
-      if (e.target === m) m.classList.remove("open");
-    });
-  })(ms[mi]);
 }
 
-loadAll();
-</script>
-</body>
-</html>
+function renderVehicleTabs() {
+  vehicleTabsEl.innerHTML = "";
+  for (const v of state.vehicles) {
+    const tab = document.createElement("div");
+    tab.className = "vehicle-tab" + (v.id === state.activeVehicleId ? " active" : "");
+
+    const name = document.createElement("span");
+    name.className = "tab-name";
+    name.textContent = v.name;
+    name.addEventListener("click", () => selectVehicle(v.id));
+
+    const renameBtn = document.createElement("button");
+    renameBtn.className = "icon-btn";
+    renameBtn.title = "Umbenennen";
+    renameBtn.textContent = "✎";
+    renameBtn.addEventListener("click", () => renameVehicle(v));
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn del";
+    delBtn.title = "Fahrzeug löschen";
+    delBtn.textContent = "✕";
+    delBtn.addEventListener("click", () => deleteVehicle(v));
+
+    tab.append(name, renameBtn, delBtn);
+    vehicleTabsEl.appendChild(tab);
+  }
+}
+
+async function addVehicle() {
+  const input = document.getElementById("newVehicleName");
+  const name = input.value.trim();
+  if (!name) { setStatus("Bitte Fahrzeugname eingeben.", true); return; }
+  const { data, error } = await supabase.from("vehicles").insert({ name }).select().single();
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  input.value = "";
+  setStatus("Fahrzeug angelegt.");
+  await loadVehicles();
+  selectVehicle(data.id);
+}
+
+async function renameVehicle(v) {
+  const name = prompt("Neuer Name für „" + v.name + "“:", v.name);
+  if (!name || name === v.name) return;
+  const { error } = await supabase.from("vehicles").update({ name: name.trim() }).eq("id", v.id);
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  setStatus("Umbenannt.");
+  await loadVehicles();
+}
+
+async function deleteVehicle(v) {
+  if (!confirm("„" + v.name + "“ und alle Tankbelege löschen?")) return;
+  const { error } = await supabase.from("vehicles").delete().eq("id", v.id);
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  setStatus("Fahrzeug gelöscht.");
+  await loadVehicles();
+}
+
+async function selectVehicle(id) {
+  state.activeVehicleId = id;
+  renderVehicleTabs();
+  const { data, error } = await supabase.from("fuel_entries").select().eq("vehicle_id", id);
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  state.entries = data || [];
+  renderEntries();
+}
+
+// ================= TANKBELEGE =================
+function computeWithConsumption(entries) {
+  const sorted = [...entries].sort((a, b) => {
+    if (a.entry_date !== b.entry_date) return a.entry_date < b.entry_date ? -1 : 1;
+    if (a.km !== b.km) return a.km - b.km;
+    return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
+  });
+  let prevKm = null;
+  return sorted.map(e => {
+    let cons = null, cost100 = null, distance = null;
+    if (prevKm !== null && e.km > prevKm) {
+      distance = e.km - prevKm;
+      if (e.liters > 0) cons = (e.liters / distance) * 100;
+      if (e.liters > 0 && e.price_per_l > 0) cost100 = (e.liters * e.price_per_l) / distance * 100;
+    }
+    prevKm = e.km;
+    return { ...e, distance, cons, cost100 };
+  });
+}
+
+function renderEntries() {
+  const rows = computeWithConsumption(state.entries);
+  tableBodyEl.innerHTML = "";
+  if (rows.length === 0) {
+    emptyEl.style.display = "block";
+    emptyEl.textContent = "Noch keine Tankbelege für dieses Fahrzeug.";
+    avgEl.textContent = "";
+    return;
+  }
+  emptyEl.style.display = "none";
+  rows.reverse().forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + r.entry_date + "</td>" +
+      "<td>" + Number(r.km).toLocaleString("de-DE") + "</td>" +
+      "<td>" + Number(r.liters).toFixed(1) + "</td>" +
+      "<td>" + Number(r.price_per_l).toFixed(3) + "</td>" +
+      "<td>" + r.tire_type + "</td>" +
+      "<td>" + (r.fill_type || "Volltankung") + "</td>" +
+      "<td>" + fmt(r.cons) + "</td>" +
+      "<td>" + fmt(r.cost100, 2) + " €</td>";
+    const tda = document.createElement("td");
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn row-del";
+    delBtn.title = "Beleg löschen";
+    delBtn.textContent = "✕";
+    delBtn.addEventListener("click", () => deleteEntry(r.id));
+    tda.appendChild(delBtn);
+    tr.appendChild(tda);
+    tableBodyEl.appendChild(tr);
+  });
+  const valid = rows.filter(r => r.cons != null);
+  avgEl.textContent = valid.length
+    ? "Ø Verbrauch: " + fmt(valid.reduce((s, r) => s + r.cons, 0) / valid.length) + " l/100 km"
+    : "Ø: –";
+}
+
+function addEntry(e) {
+  e.preventDefault();
+  if (!state.activeVehicleId) return;
+  const payload = {
+    vehicle_id: state.activeVehicleId,
+    entry_date: document.getElementById("fDate").value || new Date().toISOString().slice(0, 10),
+    km: parseInt(document.getElementById("fKm").value, 10),
+    liters: parseFloat(document.getElementById("fLiters").value.replace(",", ".")),
+    price_per_l: parseFloat(document.getElementById("fPrice").value.replace(",", ".")),
+    tire_type: document.getElementById("fTire").value,
+    fill_type: document.getElementById("fFill").value,   // Volltankung / Teiltankung
+    notes: document.getElementById("fNotes").value.trim() || null,
+  };
+  if (!payload.km || isNaN(payload.liters) || isNaN(payload.price_per_l)) {
+    setStatus("Bitte km, Liter und Preis korrekt ausfüllen.", true); return;
+  }
+  supabase.from("fuel_entries").insert(payload).then(({ error }) => {
+    if (error) { setStatus("Fehler: " + error.message, true); return; }
+    formEl.reset();
+    setStatus("Tankbeleg gespeichert.");
+    selectVehicle(state.activeVehicleId);
+  });
+}
+
+function deleteEntry(id) {
+  if (!confirm("Diesen Tankbeleg löschen?")) return;
+  supabase.from("fuel_entries").delete().eq("id", id).then(({ error }) => {
+    if (error) { setStatus("Fehler: " + error.message, true); return; }
+    setStatus("Beleg gelöscht.");
+    selectVehicle(state.activeVehicleId);
+  });
+}
+
+// ================= INIT =================
+formEl.addEventListener("submit", addEntry);
+document.getElementById("addVehicleBtn").addEventListener("click", addVehicle);
+document.getElementById("newVehicleName").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") addVehicle();
+});
+initAuth();
