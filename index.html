@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -16,7 +16,7 @@
       <p class="login-sub">Bitte anmelden</p>
       <form id="loginForm">
         <label>E-Mail
-          <input type="email" id="loginEmail" autocomplete="email" required />
+          <input type="email" id="loginEmail" autocomplete="username" required />
         </label>
         <label>Passwort
           <input type="password" id="loginPass" autocomplete="current-password" required />
@@ -29,57 +29,58 @@
 
   <!-- ================= APP ================= -->
   <div id="appScreen" style="display:none">
-
     <header class="app-header">
       <h1>Tankbuch</h1>
       <div class="header-actions">
-        <button class="theme-btn" id="themeToggle" title="Design wechseln">🌙</button>
+        <button class="theme-btn" id="themeToggle" title="Design umschalten">🌙</button>
         <button class="logout-btn" id="logoutBtn">Abmelden</button>
       </div>
     </header>
 
-    <!-- FAHRZEUGE: nur Auswahl -->
+    <!-- Fahrzeuge -->
     <section class="vehicles-section">
       <h2>Fahrzeuge</h2>
       <div class="vehicle-tabs" id="vehicleTabs"></div>
     </section>
 
-    <!-- BELEGE -->
+    <!-- Tankbelege -->
     <section class="entries-section">
       <div class="section-header">
-        <h2 style="margin:0">Tankbelege</h2>
+        <h2 class="section-title-inline">Tankbelege</h2>
         <button class="fab-btn" id="openEntrySheet">+ Beleg</button>
       </div>
-
       <div class="status-bar" id="status"></div>
-      <div class="empty-state" id="emptyState" style="display:none">Kein Fahrzeug ausgewählt.</div>
-
       <div class="entries-table-wrap" id="entriesList"></div>
-
-      <p class="avg-consumption" id="avgConsumption"></p>
+      <div class="empty-state" id="emptyState">Kein Fahrzeug ausgewählt.</div>
     </section>
-
   </div>
 
-  <!-- ================= BOTTOM SHEET (Popup) ================= -->
+  <!-- ================= BOTTOM SHEET (Neuer Tankbeleg) ================= -->
   <div class="sheet-overlay" id="entrySheetOverlay" style="display:none">
     <div class="bottom-sheet" id="entrySheet">
       <div class="sheet-grabber"></div>
-      <button class="sheet-close" id="sheetClose" title="Schließen">✕</button>
+      <button class="sheet-close" id="sheetClose" type="button">✕</button>
       <h3>Neuer Tankbeleg</h3>
+
       <form class="sheet-form" id="entryForm">
-        <label>Datum
-          <input type="date" id="fDatum" required />
+        <!-- 1 Spalte -->
+        <label class="full">Datum
+          <input type="date" id="fDatum" />
         </label>
-        <label>km-Stand
-          <input type="number" id="fKm" placeholder="z. B. 45200" inputmode="numeric" required />
+
+        <label class="full">km-Stand
+          <input type="number" inputmode="numeric" id="fKm" />
         </label>
+
+        <!-- 2 Spalten: Menge | €/Liter -->
         <label>Liter (Menge)
-          <input type="number" id="fMenge" placeholder="z. B. 48,5" step="0.1" inputmode="decimal" required />
+          <input type="number" inputmode="decimal" id="fMenge" />
         </label>
         <label>€ / Liter
-          <input type="number" id="fPreis" placeholder="z. B. 1,79" step="0.01" inputmode="decimal" required />
+          <input type="number" inputmode="decimal" id="fPreis" step="0.01" />
         </label>
+
+        <!-- 2 Spalten: Reifen | Tankart -->
         <label>Reifen (Radgröße)
           <select id="fRadae">
             <option value="Sommer">Sommer</option>
@@ -93,9 +94,12 @@
             <option value="false">Teiltankung</option>
           </select>
         </label>
-        <label>Bemerkung
-          <input type="text" id="fBemerkung" placeholder="Optional" />
+
+        <!-- 1 Spalte -->
+        <label class="full">Bemerkung
+          <input type="text" id="fBemerkung" placeholder="optional" />
         </label>
+
         <button type="submit" class="sheet-submit">Speichern</button>
       </form>
     </div>
