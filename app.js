@@ -8,7 +8,7 @@ const TBL_FZ = "fahrzeuge";
 const TBL_BE = "belege";
 
 const $ = (id) => document.getElementById(id);
-const state = { vehicles: [], activeVehicleId: null, entries: [], avgByVehicle: {} };
+const state = { vehicles: [], activeVehicleId: null, entries: [], avgByVehicle: {}, view: "table" };
 
 // ================= DARK MODE (standardmäßig dunkel) =================
 const themeToggleEl = $("themeToggle");
@@ -87,7 +87,6 @@ function openSheet() {
   sheetOverlay.style.display = "flex";
   const fDatum = $("fDatum");
   if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
-  // Letzte Reifenwahl wiederherstellen (predefined)
   const lastRadae = localStorage.getItem("tankbuch-radae");
   if (lastRadae) $("fRadae").value = lastRadae;
   setTimeout(() => $("fKm").focus(), 100);
@@ -97,7 +96,15 @@ function closeSheet() {
   sheetOverlay.style.display = "none";
 }
 
-openSheetBtn.addEventListener("click", openSheet);
+openSheetBtn.addEventListener("click", () => {
+  // Wenn Diagramm aktiv ist, zurück zur Tabelle
+  if (state.view === "chart") {
+    state.view = "table";
+    renderContent();
+  }
+  openSheet();
+});
+
 sheetCloseBtn.addEventListener("click", closeSheet);
 sheetOverlay.addEventListener("click", (e) => {
   if (e.target === sheetOverlay) closeSheet();
@@ -116,18 +123,15 @@ function setStatus(msg, isErr = false) {
 }
 
 function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
-function fmtKm(n)        { return n == null ? "–" : Number(n).toLocaleString("de-DE"); }
+function fmtKm(n)       { return n == null ? "–" : Number(n).toLocaleString("de-DE"); }
 
-// Robuste Zahl: erlaubt Komma oder Punkt, optional Leerstellen
 function parseNum(raw) {
   if (raw == null) return NaN;
   const s = String(raw).trim().replace(/\s/g, "").replace(",", ".");
   if (s === "") return NaN;
-  const n = parseFloat(s);
-  return n;
+  return parseFloat(s);
 }
 
-// Durchschnittsverbrauch (l/100 km) über alle Belege eines Fahrzeugs
 function avgOf(entries) {
   const rows = computeWithConsumption(entries);
   const valid = rows.filter(r => r.cons != null);
@@ -141,8 +145,8 @@ async function loadVehicles() {
   state.vehicles = data || [];
 
   await loadAvgForAllVehicles();
-
   renderVehicleTabs();
+
   if (state.vehicles.length > 0) {
     if (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId)) {
       state.activeVehicleId = state.vehicles[0].id;
@@ -198,7 +202,7 @@ async function selectVehicle(id) {
   const { data, error } = await supabase.from(TBL_BE).select().eq("fahrzeug_id", id);
   if (error) { setStatus("Fehler: " + error.message, true); return; }
   state.entries = data || [];
-  renderEntries();
+  renderContent();
 
   state.avgByVehicle[id] = avgOf(state.entries);
   renderVehicleTabs();
@@ -323,7 +327,6 @@ function addEntry(e) {
     bemerkung:   $("fBemerkung").value.trim() || null,
   };
 
-  // Letzte Reifenwahl merken, fürs nächste Mal
   try { localStorage.setItem("tankbuch-radae", payload.radae); } catch (_) {}
 
   supabase.from(TBL_BE).insert(payload).then(({ error }) => {
@@ -342,6 +345,170 @@ function deleteEntry(id) {
     setStatus("Beleg gelöscht.");
     selectVehicle(state.activeVehicleId);
   });
+}
+
+// ================= VIEW-WECHSEL: Tabelle ⇄ Diagramm =================
+const entriesListEl = $("entriesList");
+const chartWrapEl   = $("chartWrap");
+const openChartBtn  = $("openChartBtn");
+const openEntryBtn  = $("openEntrySheet");
+
+function renderContent() {
+  updateBtnStates();
+  if (state.view === "chart") {
+    entriesListEl.style.display = "none";
+    chartWrapEl.style.display   = "block";
+    emptyEl.style.display       = "none";
+    renderChart();
+  } else {
+    chartWrapEl.style.display   = "none";
+    entriesListEl.style.display = "block";
+    renderEntries();
+  }
+}
+
+function updateBtnStates() {
+  if (openChartBtn) openChartBtn.classList.toggle("active", state.view === "chart");
+  if (openEntryBtn) openEntryBtn.classList.toggle("active", state.view === "table");
+}
+
+function toggleView() {
+  state.view = state.view === "table" ? "chart" : "table";
+  if (state.view === "chart" && state.entries.length === 0) {
+    state.view = "table";
+    setStatus("Keine Belege vorhanden – Tabelle angezeigt.");
+  }
+  renderContent();
+}
+
+openChartBtn.addEventListener("click", toggleView);
+
+// ================= DIAGRAMM: letzte 15 Werte (l/100 km) über Datum =================
+function renderChart() {
+  chartWrapEl.innerHTML = "";
+
+  const all = computeWithConsumption(state.entries).filter(r => r.cons != null);
+  if (all.length < 2) {
+    const p = document.createElement("p");
+    p.style.cssText = "text-align:center;color:var(--muted);padding:32px 16px;";
+    p.textContent = all.length
+      ? "Zu wenige berechenbare Werte (min. 2 nötig)."
+      : "Noch keine berechenbaren Verbrauchsdaten.";
+    chartWrapEl.appendChild(p);
+    return;
+  }
+
+  // Letzte 15 Werte (chronologisch, neueste rechts)
+  const data = all.slice(-15);
+
+  const ns = "http://www.w3.org/2000/svg";
+  const W = 640, H = 320;
+  const padL = 48, padR = 20, padT = 44, padB = 44;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const minC = Math.min(...data.map(d => d.cons));
+  const maxC = Math.max(...data.map(d => d.cons));
+  const cRange = (maxC - minC) || 1;
+  const yMin = minC - cRange * 0.15;
+  const yMax = maxC + cRange * 0.15;
+  const yRange = (yMax - yMin) || 1;
+
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+  // Titel
+  const title = document.createElementNS(ns, "text");
+  title.setAttribute("x", padL);
+  title.setAttribute("y", 22);
+  title.setAttribute("class", "chart-title");
+  title.textContent = "Verbrauch · letzte " + data.length + " Werte";
+  svg.appendChild(title);
+
+  const sub = document.createElementNS(ns, "text");
+  sub.setAttribute("x", W - padR);
+  sub.setAttribute("y", 22);
+  sub.setAttribute("text-anchor", "end");
+  sub.setAttribute("class", "chart-sub");
+  sub.textContent = "l/100 km über Datum";
+  svg.appendChild(sub);
+
+  // Y-Achse: 5 Grid-Linien + Labels
+  const ySteps = 5;
+  for (let i = 0; i <= ySteps; i++) {
+    const y = padT + plotH - (i / ySteps) * plotH;
+    const val = yMin + (i / ySteps) * yRange;
+
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", padL); line.setAttribute("x2", W - padR);
+    line.setAttribute("y1", y);    line.setAttribute("y2", y);
+    line.setAttribute("class", "grid-line");
+    svg.appendChild(line);
+
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", padL - 6);
+    label.setAttribute("y", y + 3);
+    label.setAttribute("text-anchor", "end");
+    label.setAttribute("class", "axis-label");
+    label.textContent = val.toFixed(1);
+    svg.appendChild(label);
+  }
+
+  // X-Achse: Datum-Labels (max. 5, gleichmäßig verteilt)
+  const n = data.length;
+  const xLabelCount = Math.min(n, 5);
+  const labelIdxs = [];
+  if (n <= 5) {
+    for (let i = 0; i < n; i++) labelIdxs.push(i);
+  } else {
+    for (let i = 0; i < xLabelCount; i++) {
+      labelIdxs.push(Math.round(i * (n - 1) / (xLabelCount - 1)));
+    }
+  }
+
+  labelIdxs.forEach(i => {
+    const x = padL + (i / (n - 1 || 1)) * plotW;
+    const label = document.createElementNS(ns, "text");
+    label.setAttribute("x", x);
+    label.setAttribute("y", H - 12);
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("class", "axis-label");
+    label.textContent = fmtDate(data[i].datum);
+    svg.appendChild(label);
+  });
+
+  // Datenpunkte
+  const pts = data.map((d, i) => {
+    const x = padL + (i / (n - 1 || 1)) * plotW;
+    const y = padT + plotH - ((d.cons - yMin) / yRange) * plotH;
+    return { x, y, cons: d.cons };
+  });
+
+  // Linie (Polyline)
+  const poly = document.createElementNS(ns, "polyline");
+  poly.setAttribute("points", pts.map(p => `${p.x},${p.y}`).join(" "));
+  poly.setAttribute("class", "data-line");
+  svg.appendChild(poly);
+
+  // Punkte + Werte über jedem Punkt
+  pts.forEach(p => {
+    const dot = document.createElementNS(ns, "circle");
+    dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+    dot.setAttribute("r", "3.5");
+    dot.setAttribute("class", "data-dot");
+    svg.appendChild(dot);
+
+    const val = document.createElementNS(ns, "text");
+    val.setAttribute("x", p.x);
+    val.setAttribute("y", p.y - 8);
+    val.setAttribute("text-anchor", "middle");
+    val.setAttribute("class", "data-value");
+    val.textContent = p.cons.toFixed(1);
+    svg.appendChild(val);
+  });
+
+  chartWrapEl.appendChild(svg);
 }
 
 // ================= INIT =================
