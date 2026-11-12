@@ -50,36 +50,25 @@
       <div class="vehicle-tabs" id="vehicleTabs"></div>
     </section>
 
-    <!-- Tankbelege / Diagramm -->
+    <!-- Tankbelege -->
     <section class="entries-section">
       <div class="section-header">
         <h2 class="section-title-inline">Tankbelege</h2>
-        <div class="header-btns">
-          <button class="fab-btn" id="openChartBtn" title="Diagramm anzeigen" aria-label="Diagramm anzeigen">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="4 17 9 11 14 14 20 6"/>
-              <circle cx="9" cy="11" r="1.5" fill="currentColor"/>
-              <circle cx="14" cy="14" r="1.5" fill="currentColor"/>
-            </svg>
-          </button>
-          <button class="fab-btn" id="openEntrySheet" title="Neuer Beleg" aria-label="Neuer Beleg">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </button>
-        </div>
+        <button class="fab-btn" id="openEntrySheet" title="Neuer Beleg" aria-label="Neuer Beleg">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
       </div>
       <div class="status-bar" id="status"></div>
       <div class="entries-table-wrap" id="entriesList"></div>
-      <div class="chart-wrap" id="chartWrap" style="display:none"></div>
       <div class="empty-state" id="emptyState">Kein Fahrzeug ausgewählt.</div>
     </section>
   </div>
 
-  <!-- ================= BOTTOM SHEET: Neuer Tankbeleg ================= -->
+  <!-- ================= BOTTOM SHEET (Neuer Tankbeleg) ================= -->
   <div class="sheet-overlay" id="entrySheetOverlay" style="display:none">
     <div class="bottom-sheet" id="entrySheet">
       <div class="sheet-grabber"></div>
@@ -87,18 +76,24 @@
       <h3>Neuer Tankbeleg</h3>
 
       <form class="sheet-form" id="entryForm">
+        <!-- 1 Spalte -->
         <label class="full">Datum
           <input type="date" id="fDatum" />
         </label>
+
         <label class="full">km-Stand
           <input type="number" inputmode="numeric" id="fKm" />
         </label>
+
+        <!-- 2 Spalten: Menge | €/Liter (Kommazahl erlaubt) -->
         <label>Liter (Menge)
           <input type="text" inputmode="decimal" id="fMenge" />
         </label>
         <label>€ / Liter
           <input type="text" inputmode="decimal" id="fPreis" />
         </label>
+
+        <!-- 2 Spalten: Reifen | Tankart -->
         <label>Reifen (Radgröße)
           <select id="fRadae">
             <option value="Sommer">Sommer</option>
@@ -112,9 +107,12 @@
             <option value="false">Teiltankung</option>
           </select>
         </label>
+
+        <!-- 1 Spalte -->
         <label class="full">Bemerkung
           <input type="text" id="fBemerkung" placeholder="optional" />
         </label>
+
         <button type="submit" class="sheet-submit">Speichern</button>
       </form>
     </div>

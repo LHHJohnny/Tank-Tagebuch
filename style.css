@@ -55,7 +55,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
+  overflow-x: hidden;          /* verhindert seitliches Scrollen auf dem Handy */
 }
 html, body { max-width: 100vw; }
 
@@ -69,7 +69,7 @@ body {
            calc(var(--safe-bottom) + 24px);
   transition: background-color 0.3s, color 0.3s;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: hidden;          /* Doppelt für Sicherheit auf iOS-Safari */
 }
 
 ::-webkit-scrollbar { display: none; }
@@ -153,7 +153,7 @@ h2 {
 .vehicles-section { margin-bottom: 20px; }
 .entries-section  { margin-bottom: 40px; }
 
-/* 6. VEHICLE TABS */
+/* 6. VEHICLE TABS – Name groß, Ø-Verbrauch klein, ohne Kennzeichen */
 .vehicle-tabs {
   display: flex; gap: 10px;
   overflow-x: auto; padding-bottom: 4px;
@@ -182,12 +182,7 @@ h2 {
   display: flex; justify-content: space-between; align-items: center;
 }
 
-/* Zwei runde Buttons nebeneinander (Diagramm + Beleg) */
-.header-btns {
-  display: flex; gap: 8px; align-items: center;
-}
-
-/* iOS-Style runde Buttons */
+/* iOS-Style "+": runder, blauer Button mit weißem Plus */
 .fab-btn {
   width: 44px; height: 44px;
   padding: 0;
@@ -200,15 +195,6 @@ h2 {
 }
 .fab-btn:active { transform: scale(0.92); }
 
-/* Aktiver Modus: dunkler Blau + dezenter Ring */
-.fab-btn.active {
-  background: #0055CC;
-  box-shadow: 0 0 0 3px var(--blue-light), 0 4px 14px rgba(0,122,255,0.35);
-}
-:root[data-theme="dark"] .fab-btn.active {
-  background: #0060df;
-}
-
 .status-bar { min-height: 1.2em; font-size: 0.85rem; margin: 4px 0; }
 
 /* Wrapper – horizontal scrollbar für die Tabelle */
@@ -220,33 +206,6 @@ h2 {
   border-radius: var(--radius-sm);
   background: var(--bg-card);
 }
-
-/* Diagramm-Wrapper: gleiche Optik wie Tabellen-Wrapper */
-.chart-wrap {
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.chart-wrap svg {
-  display: block;
-  width: 100%;
-  min-width: 300px;
-  height: auto;
-}
-
-.chart-wrap .chart-title  { font-size: 13px; font-weight: 600; fill: var(--text); }
-.chart-wrap .chart-sub    { font-size: 11px; fill: var(--muted); }
-.chart-wrap .axis-label   { font-size: 10px; fill: var(--muted); font-family: inherit; }
-.chart-wrap .grid-line    { stroke: var(--border-light); stroke-width: 0.5; }
-.chart-wrap .data-line    { fill: none; stroke: var(--blue); stroke-width: 2;
-                            stroke-linejoin: round; stroke-linecap: round; }
-.chart-wrap .data-dot     { fill: var(--blue); }
-.chart-wrap .data-value   { font-size: 10px; fill: var(--text-secondary); font-weight: 600; }
 
 .entry-table {
   width: 100%;
@@ -305,7 +264,7 @@ h2 {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: fadeIn 0.25s ease;
-  overflow: hidden;
+  overflow: hidden;                 /* kein Seitwärts-Scrollen durch die Tastatur */
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -337,6 +296,7 @@ h2 {
   text-align: center; margin-bottom: 20px;
 }
 
+/* 2-Spalten-Grid; .full = ganze Breite (Datum, km, Bemerkung, Button) */
 .sheet-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -345,7 +305,7 @@ h2 {
   width: 100%;
   min-width: 0;
 }
-.sheet-form > * { min-width: 0; }
+.sheet-form > * { min-width: 0; }   /* verhindert Überlauf im Grid */
 .sheet-form .full { grid-column: 1 / -1; }
 .sheet-form label {
   display: flex; flex-direction: column;
