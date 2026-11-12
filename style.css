@@ -151,11 +151,12 @@ h2 {
   color: var(--muted); text-transform: uppercase;
   letter-spacing: 0.5px; margin: 24px 0 10px;
 }
+.section-title-inline { margin-top: 0; }
 .vehicles-section { margin-bottom: 20px; }
 .entries-section  { margin-bottom: 40px; }
 
 /* ============================================================
-   6. VEHICLE TABS
+   6. VEHICLE TABS – Name groß, Ø-Verbrauch klein, ohne Kennzeichen
    ============================================================ */
 .vehicle-tabs {
   display: flex; gap: 10px;
@@ -167,17 +168,18 @@ h2 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
   background: var(--bg-card);
-  white-space: nowrap; min-height: 44px;
+  white-space: nowrap; min-height: 54px;
   transition: all 0.2s; box-shadow: var(--shadow-sm);
 }
 .vehicle-tab:active { transform: scale(0.97); }
 .vehicle-tab.active {
   background: var(--blue); color: #fff; border-color: var(--blue);
 }
-.vehicle-tab .tab-name   { font-weight: 600; font-size: 0.95rem; }
-.vehicle-tab .tab-kenner { font-size: 0.72rem; opacity: 0.7; }
+.vehicle-tab .tab-name { font-weight: 600; font-size: 0.95rem; }
+.vehicle-tab .tab-avg  { font-size: 0.74rem; font-weight: 500; opacity: 0.75; }
+.vehicle-tab.active .tab-avg { opacity: 0.85; }
 
 /* ============================================================
    7. BELEGE – kompakte Tabelle, 1 Zeile pro Beleg, horizontal scrollbar
@@ -264,10 +266,6 @@ h2 {
 }
 .entry-del:hover, .entry-del:active { background: var(--blue-light); }
 
-.avg-consumption {
-  margin: 10px 0 0; font-weight: 600;
-  font-size: 0.9rem; text-align: center; color: var(--text-secondary);
-}
 .empty-state {
   color: var(--muted); padding: 32px 16px;
   text-align: center; font-size: 0.95rem;
@@ -314,9 +312,14 @@ h2 {
   text-align: center; margin-bottom: 20px;
 }
 
+/* 2-Spalten-Grid; .full = ganze Breite (Datum, km, Bemerkung, Button) */
 .sheet-form {
-  display: flex; flex-direction: column; gap: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
 }
+.sheet-form .full { grid-column: 1 / -1; }
 .sheet-form label {
   display: flex; flex-direction: column;
   font-size: 0.8rem; color: var(--muted);
@@ -339,6 +342,7 @@ h2 {
   margin-top: 8px; padding: 14px;
   font-size: 1rem; font-weight: 600;
   border-radius: var(--radius-sm); min-height: 52px;
+  grid-column: 1 / -1;
 }
 
 .sheet-close {
