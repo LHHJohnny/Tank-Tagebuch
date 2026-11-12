@@ -3,9 +3,7 @@
    iOS-inspiriert, Dark-Mode default, kompakte Tabelle
    ============================================================ */
 
-/* ============================================================
-   1. CSS-VARIABLES – Light & Dark
-   ============================================================ */
+/* 1. CSS-VARIABLES – Light & Dark */
 :root {
   --bg:            #F2F2F7;
   --bg-card:       #FFFFFF;
@@ -51,15 +49,15 @@
   --shadow-sm:     0 2px 12px rgba(0,0,0,0.40);
 }
 
-/* ============================================================
-   2. RESET & BASE
-   ============================================================ */
+/* 2. RESET & BASE */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;          /* verhindert seitliches Scrollen auf dem Handy */
 }
+html, body { max-width: 100vw; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
@@ -71,14 +69,13 @@ body {
            calc(var(--safe-bottom) + 24px);
   transition: background-color 0.3s, color 0.3s;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;          /* Doppelt für Sicherheit auf iOS-Safari */
 }
 
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 
-/* ============================================================
-   3. LOGIN
-   ============================================================ */
+/* 3. LOGIN */
 .login-wrap {
   display: flex; align-items: center; justify-content: center;
   min-height: 100dvh; padding: 20px;
@@ -114,9 +111,7 @@ body {
 .login-card button { margin-top: 12px; padding: 14px; font-size: 1rem; font-weight: 600; }
 .login-error { color: var(--red); font-size: 0.85rem; min-height: 1.2em; }
 
-/* ============================================================
-   4. HEADER
-   ============================================================ */
+/* 4. HEADER */
 .app-header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 20px; padding-bottom: 12px;
@@ -126,11 +121,16 @@ body {
 .header-actions { display: flex; gap: 8px; align-items: center; }
 
 .logout-btn {
-  background: transparent; color: var(--muted);
-  border: 1px solid var(--border); font-size: 0.82rem;
-  padding: 8px 14px; border-radius: 20px; font-weight: 500;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  border: 1px solid var(--border-light);
+  transition: transform 0.2s, background 0.3s, color 0.3s, border-color 0.3s;
 }
 .logout-btn:hover, .logout-btn:active { border-color: var(--red); color: var(--red); }
+.logout-btn:active { transform: scale(0.95); }
 
 .theme-btn {
   width: 40px; height: 40px;
@@ -143,9 +143,7 @@ body {
 }
 .theme-btn:hover, .theme-btn:active { transform: scale(1.1); }
 
-/* ============================================================
-   5. SECTIONS & TITLES
-   ============================================================ */
+/* 5. SECTIONS & TITLES */
 h2 {
   font-size: 0.85rem; font-weight: 600;
   color: var(--muted); text-transform: uppercase;
@@ -155,9 +153,7 @@ h2 {
 .vehicles-section { margin-bottom: 20px; }
 .entries-section  { margin-bottom: 40px; }
 
-/* ============================================================
-   6. VEHICLE TABS – Name groß, Ø-Verbrauch klein, ohne Kennzeichen
-   ============================================================ */
+/* 6. VEHICLE TABS – Name groß, Ø-Verbrauch klein, ohne Kennzeichen */
 .vehicle-tabs {
   display: flex; gap: 10px;
   overflow-x: auto; padding-bottom: 4px;
@@ -181,25 +177,27 @@ h2 {
 .vehicle-tab .tab-avg  { font-size: 0.74rem; font-weight: 500; opacity: 0.75; }
 .vehicle-tab.active .tab-avg { opacity: 0.85; }
 
-/* ============================================================
-   7. BELEGE – kompakte Tabelle, 1 Zeile pro Beleg, horizontal scrollbar
-   ============================================================ */
+/* 7. BELEGE – kompakte Tabelle */
 .section-header {
   display: flex; justify-content: space-between; align-items: center;
 }
 
+/* iOS-Style "+": runder, blauer Button mit weißem Plus */
 .fab-btn {
-  background: var(--blue); color: #fff; border: none;
-  padding: 10px 20px; border-radius: 22px;
-  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  width: 44px; height: 44px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--blue); color: #fff;
   box-shadow: 0 4px 14px rgba(0,122,255,0.35);
-  transition: transform 0.15s, box-shadow 0.2s; min-height: 44px;
+  transition: transform 0.15s, box-shadow 0.2s;
+  border: none;
 }
-.fab-btn:active { transform: scale(0.95); }
+.fab-btn:active { transform: scale(0.92); }
 
 .status-bar { min-height: 1.2em; font-size: 0.85rem; margin: 4px 0; }
 
-/* Wrapper – horizontal scrollbar */
+/* Wrapper – horizontal scrollbar für die Tabelle */
 .entries-table-wrap {
   margin-top: 10px;
   overflow-x: auto;
@@ -209,7 +207,6 @@ h2 {
   background: var(--bg-card);
 }
 
-/* Die Tabelle */
 .entry-table {
   width: 100%;
   min-width: 680px;
@@ -218,7 +215,6 @@ h2 {
   font-family: inherit;
 }
 
-/* ALLE Zellen: gleiche Schrift, kompakt */
 .entry-table th,
 .entry-table td {
   padding: 4px 10px;
@@ -230,7 +226,6 @@ h2 {
   color: var(--text);
 }
 
-/* Kopfzeile */
 .entry-table thead th {
   background: var(--bg-elevated);
   color: var(--muted);
@@ -241,24 +236,13 @@ h2 {
   border-bottom: 1px solid var(--border);
 }
 
-/* Datenzeilen */
-.entry-table tbody tr {
-  border-bottom: 1px solid var(--border-light);
-}
-.entry-table tbody tr:last-child {
-  border-bottom: none;
-}
-.entry-table tbody tr:active {
-  background: var(--bg-elevated);
-}
+.entry-table tbody tr { border-bottom: 1px solid var(--border-light); }
+.entry-table tbody tr:last-child { border-bottom: none; }
+.entry-table tbody tr:active { background: var(--bg-elevated); }
 
-/* Erste Spalte (Datum) linksbündig */
 .entry-table td:first-child,
-.entry-table th:first-child {
-  text-align: left;
-}
+.entry-table th:first-child { text-align: left; }
 
-/* Löschen-Button */
 .entry-del {
   color: var(--red); background: none; border: none;
   font-size: 0.85rem; cursor: pointer;
@@ -271,9 +255,7 @@ h2 {
   text-align: center; font-size: 0.95rem;
 }
 
-/* ============================================================
-   8. BOTTOM SHEET (Popup) – iOS Sheet
-   ============================================================ */
+/* 8. BOTTOM SHEET (Popup) – iOS Sheet */
 .sheet-overlay {
   position: fixed; inset: 0;
   background: var(--bg-overlay);
@@ -282,6 +264,7 @@ h2 {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: fadeIn 0.25s ease;
+  overflow: hidden;                 /* kein Seitwärts-Scrollen durch die Tastatur */
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -294,6 +277,7 @@ h2 {
   position: relative;
   animation: sheetUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  min-width: 0;
 }
 @keyframes sheetUp {
   from { transform: translateY(100%); }
@@ -318,15 +302,22 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
+.sheet-form > * { min-width: 0; }   /* verhindert Überlauf im Grid */
 .sheet-form .full { grid-column: 1 / -1; }
 .sheet-form label {
   display: flex; flex-direction: column;
   font-size: 0.8rem; color: var(--muted);
   gap: 6px; font-weight: 500;
+  min-width: 0;
 }
 .sheet-form input,
 .sheet-form select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -343,6 +334,7 @@ h2 {
   font-size: 1rem; font-weight: 600;
   border-radius: var(--radius-sm); min-height: 52px;
   grid-column: 1 / -1;
+  width: 100%;
 }
 
 .sheet-close {
@@ -357,9 +349,7 @@ h2 {
 }
 .sheet-close:hover, .sheet-close:active { background: var(--red); color: #fff; }
 
-/* ============================================================
-   9. RESPONSIVE
-   ============================================================ */
+/* 9. RESPONSIVE */
 @media (min-width: 768px) {
   body { max-width: 700px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
 }
@@ -367,9 +357,7 @@ h2 {
   body { max-width: 900px; }
 }
 
-/* ============================================================
-   10. GLOBAL BUTTONS & TRANSITIONS
-   ============================================================ */
+/* 10. GLOBAL BUTTONS & TRANSITIONS */
 button {
   border: 0; background: var(--blue); color: #fff;
   padding: 10px 16px; border-radius: var(--radius-sm);
