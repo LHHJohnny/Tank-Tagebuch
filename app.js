@@ -8,7 +8,7 @@ const TBL_FZ = "fahrzeuge";
 const TBL_BE = "belege";
 
 const $ = (id) => document.getElementById(id);
-const state = { vehicles: [], activeVehicleId: null, entries: [] };
+const state = { vehicles: [], activeVehicleId: null, entries: [], avgByVehicle: {} };
 
 // ================= DARK MODE (standardmäßig dunkel) =================
 const themeToggleEl = $("themeToggle");
@@ -100,10 +100,9 @@ sheetOverlay.addEventListener("click", (e) => {
   if (e.target === sheetOverlay) closeSheet();
 });
 
-// ================= FAHRZEUGE (nur Auswahl) =================
+// ================= FAHRZEUGE (Auswahl) =================
 const vehicleTabsEl = $("vehicleTabs");
 const statusEl      = $("status");
-const avgEl         = $("avgConsumption");
 const emptyEl       = $("emptyState");
 const formEl        = $("entryForm");
 
@@ -116,10 +115,22 @@ function setStatus(msg, isErr = false) {
 function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
 function fmtKm(n)        { return n == null ? "–" : Number(n).toLocaleString("de-DE"); }
 
+// Durchschnittsverbrauch (l/100 km) über alle Belege eines Fahrzeugs
+function avgOf(entries) {
+  const rows = computeWithConsumption(entries);
+  const valid = rows.filter(r => r.cons != null);
+  if (!valid.length) return null;
+  return valid.reduce((s, r) => s + r.cons, 0) / valid.length;
+}
+
 async function loadVehicles() {
   const { data, error } = await supabase.from(TBL_FZ).select().order("name");
   if (error) { setStatus("Fehler: " + error.message, true); return; }
   state.vehicles = data || [];
+
+  // Ø-Verbrauch für alle Fahrzeuge in einer Abfrage berechnen
+  await loadAvgForAllVehicles();
+
   renderVehicleTabs();
   if (state.vehicles.length > 0) {
     if (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId)) {
@@ -130,7 +141,21 @@ async function loadVehicles() {
     state.activeVehicleId = null;
     emptyEl.style.display = "block";
     emptyEl.textContent   = "Noch kein Fahrzeug vorhanden.";
-    avgEl.textContent = "";
+  }
+}
+
+async function loadAvgForAllVehicles() {
+  const { data, error } = await supabase
+    .from(TBL_BE)
+    .select("fahrzeug_id, datum, km, menge, preis");
+  if (error) return;
+  const byVehicle = {};
+  for (const e of (data || [])) {
+    (byVehicle[e.fahrzeug_id] = byVehicle[e.fahrzeug_id] || []).push(e);
+  }
+  state.avgByVehicle = {};
+  for (const vid in byVehicle) {
+    state.avgByVehicle[vid] = avgOf(byVehicle[vid]);
   }
 }
 
@@ -143,16 +168,15 @@ function renderVehicleTabs() {
     const name = document.createElement("span");
     name.className = "tab-name";
     name.textContent = v.name;
-    if (v.kenner) {
-      name.appendChild(document.createTextNode(" "));
-      const kn = document.createElement("span");
-      kn.className = "tab-kenner";
-      kn.textContent = v.kenner;
-      name.appendChild(kn);
-    }
-    name.addEventListener("click", () => selectVehicle(v.id));
+
+    const avg = document.createElement("span");
+    avg.className = "tab-avg";
+    const avgVal = state.avgByVehicle[v.id];
+    avg.textContent = avgVal != null ? "Ø " + fmt(avgVal) + " l/100 km" : "Ø –";
 
     tab.appendChild(name);
+    tab.appendChild(avg);
+    tab.addEventListener("click", () => selectVehicle(v.id));
     vehicleTabsEl.appendChild(tab);
   }
 }
@@ -164,6 +188,10 @@ async function selectVehicle(id) {
   if (error) { setStatus("Fehler: " + error.message, true); return; }
   state.entries = data || [];
   renderEntries();
+
+  // Ø für das aktive Fahrzeug aktuell halten + Tabs aktualisieren
+  state.avgByVehicle[id] = avgOf(state.entries);
+  renderVehicleTabs();
 }
 
 // ================= BELEGE – Echte Tabelle, kompakt, 1 Zeile pro Beleg =================
@@ -205,7 +233,6 @@ function renderEntries() {
   if (rows.length === 0) {
     emptyEl.style.display = "block";
     emptyEl.textContent   = "Noch keine Belege für dieses Fahrzeug.";
-    avgEl.textContent = "";
     return;
   }
   emptyEl.style.display = "none";
@@ -263,11 +290,6 @@ function renderEntries() {
 
   table.appendChild(tbody);
   listEl.appendChild(table);
-
-  const valid = rows.filter(r => r.cons != null);
-  avgEl.textContent = valid.length
-    ? "Ø Verbrauch: " + fmt(valid.reduce((s, r) => s + r.cons, 0) / valid.length) + " l/100 km"
-    : "Ø: –";
 }
 
 function addEntry(e) {
