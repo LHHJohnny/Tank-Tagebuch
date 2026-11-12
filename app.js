@@ -87,6 +87,9 @@ function openSheet() {
   sheetOverlay.style.display = "flex";
   const fDatum = $("fDatum");
   if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
+  // Letzte Reifenwahl wiederherstellen (predefined)
+  const lastRadae = localStorage.getItem("tankbuch-radae");
+  if (lastRadae) $("fRadae").value = lastRadae;
   setTimeout(() => $("fKm").focus(), 100);
 }
 
@@ -115,6 +118,15 @@ function setStatus(msg, isErr = false) {
 function fmt(n, d = 1) { return n == null ? "–" : Number(n).toFixed(d); }
 function fmtKm(n)        { return n == null ? "–" : Number(n).toLocaleString("de-DE"); }
 
+// Robuste Zahl: erlaubt Komma oder Punkt, optional Leerstellen
+function parseNum(raw) {
+  if (raw == null) return NaN;
+  const s = String(raw).trim().replace(/\s/g, "").replace(",", ".");
+  if (s === "") return NaN;
+  const n = parseFloat(s);
+  return n;
+}
+
 // Durchschnittsverbrauch (l/100 km) über alle Belege eines Fahrzeugs
 function avgOf(entries) {
   const rows = computeWithConsumption(entries);
@@ -128,7 +140,6 @@ async function loadVehicles() {
   if (error) { setStatus("Fehler: " + error.message, true); return; }
   state.vehicles = data || [];
 
-  // Ø-Verbrauch für alle Fahrzeuge in einer Abfrage berechnen
   await loadAvgForAllVehicles();
 
   renderVehicleTabs();
@@ -189,7 +200,6 @@ async function selectVehicle(id) {
   state.entries = data || [];
   renderEntries();
 
-  // Ø für das aktive Fahrzeug aktuell halten + Tabs aktualisieren
   state.avgByVehicle[id] = avgOf(state.entries);
   renderVehicleTabs();
 }
@@ -240,7 +250,6 @@ function renderEntries() {
   const table = document.createElement("table");
   table.className = "entry-table";
 
-  // THEAD
   const thead = document.createElement("thead");
   const hrow = document.createElement("tr");
   COLS.forEach(txt => {
@@ -251,7 +260,6 @@ function renderEntries() {
   thead.appendChild(hrow);
   table.appendChild(thead);
 
-  // TBODY
   const tbody = document.createElement("tbody");
 
   rows.reverse().forEach(r => {
@@ -275,7 +283,6 @@ function renderEntries() {
       tr.appendChild(td);
     });
 
-    // Löschen-Button
     const tdDel = document.createElement("td");
     const delBtn = document.createElement("button");
     delBtn.className = "entry-del";
@@ -295,20 +302,30 @@ function renderEntries() {
 function addEntry(e) {
   e.preventDefault();
   if (!state.activeVehicleId) return;
+
+  const kmRaw    = parseInt($("fKm").value, 10);
+  const mengeRaw = parseNum($("fMenge").value);
+  const preisRaw = parseNum($("fPreis").value);
+
+  if (!kmRaw || isNaN(mengeRaw) || isNaN(preisRaw) || mengeRaw <= 0 || preisRaw <= 0) {
+    setStatus("Bitte km, Menge und Preis korrekt ausfüllen (Kommazahl erlaubt).", true);
+    return;
+  }
+
   const payload = {
     fahrzeug_id: state.activeVehicleId,
     datum:       $("fDatum").value || new Date().toISOString().slice(0, 10),
-    km:          parseInt($("fKm").value, 10),
-    menge:       parseFloat($("fMenge").value.replace(",", ".")),
-    preis:       parseFloat($("fPreis").value.replace(",", ".")),
+    km:          kmRaw,
+    menge:       mengeRaw,
+    preis:       preisRaw,
     radae:       $("fRadae").value,
     voll:        $("fVoll").value === "true",
     bemerkung:   $("fBemerkung").value.trim() || null,
   };
-  if (!payload.km || isNaN(payload.menge) || isNaN(payload.preis)) {
-    setStatus("Bitte km, Menge und Preis korrekt ausfüllen.", true);
-    return;
-  }
+
+  // Letzte Reifenwahl merken, fürs nächste Mal
+  try { localStorage.setItem("tankbuch-radae", payload.radae); } catch (_) {}
+
   supabase.from(TBL_BE).insert(payload).then(({ error }) => {
     if (error) { setStatus("Fehler: " + error.message, true); return; }
     formEl.reset();
