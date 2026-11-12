@@ -33,7 +33,14 @@
       <h1>Tankbuch</h1>
       <div class="header-actions">
         <button class="theme-btn" id="themeToggle" title="Design umschalten">🌙</button>
-        <button class="logout-btn" id="logoutBtn">Abmelden</button>
+        <button class="logout-btn" id="logoutBtn" title="Abmelden" aria-label="Abmelden">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/>
+            <path d="M16 8l4 4-4 4"/>
+            <path d="M20 12H9"/>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -47,7 +54,13 @@
     <section class="entries-section">
       <div class="section-header">
         <h2 class="section-title-inline">Tankbelege</h2>
-        <button class="fab-btn" id="openEntrySheet">+ Beleg</button>
+        <button class="fab-btn" id="openEntrySheet" title="Neuer Beleg" aria-label="Neuer Beleg">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
       </div>
       <div class="status-bar" id="status"></div>
       <div class="entries-table-wrap" id="entriesList"></div>
@@ -72,12 +85,12 @@
           <input type="number" inputmode="numeric" id="fKm" />
         </label>
 
-        <!-- 2 Spalten: Menge | €/Liter -->
+        <!-- 2 Spalten: Menge | €/Liter (Kommazahl erlaubt) -->
         <label>Liter (Menge)
-          <input type="number" inputmode="decimal" id="fMenge" />
+          <input type="text" inputmode="decimal" id="fMenge" />
         </label>
         <label>€ / Liter
-          <input type="number" inputmode="decimal" id="fPreis" step="0.01" />
+          <input type="text" inputmode="decimal" id="fPreis" />
         </label>
 
         <!-- 2 Spalten: Reifen | Tankart -->
