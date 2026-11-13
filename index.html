@@ -1,133 +1,99 @@
 <!DOCTYPE html>
 <html lang="de" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
   <title>⛽ Tankbuch</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <!-- ================= LOGIN ================= -->
-  <div id="loginScreen" class="login-wrap" style="display:none;">
+  <div class="login-wrap" id="loginScreen">
     <div class="login-card">
       <h1>⛽ Tankbuch</h1>
       <p class="login-sub">Bitte anmelden</p>
       <form id="loginForm">
         <label>E-Mail
-          <input type="email" id="loginEmail" required autocomplete="email">
+          <input type="email" id="loginEmail" autocomplete="username" required />
         </label>
         <label>Passwort
-          <input type="password" id="loginPass" required autocomplete="current-password">
+          <input type="password" id="loginPass" autocomplete="current-password" required />
         </label>
-        <div id="loginError" class="login-error"></div>
+        <div class="login-error" id="loginError"></div>
         <button type="submit" id="loginBtn">Anmelden</button>
       </form>
     </div>
   </div>
 
   <!-- ================= APP ================= -->
-  <div id="appScreen" style="display:none;">
-
-    <!-- HEADER -->
+  <div id="appScreen" style="display:none">
     <header class="app-header">
-      <div class="header-title-wrap">
-        <h1 id="appTitle">⛽ Tankbuch</h1>
-        <div id="viewDropdown" class="view-dropdown">
-          <button id="viewDropdownBtn" class="view-dropdown-btn" type="button" title="Ansicht wechseln">▾</button>
-          <div id="viewDropdownList" class="view-dropdown-list">
-            <button class="view-dropdown-item active" data-view="tank" type="button">⛽ Tankbuch</button>
-            <button class="view-dropdown-item" data-view="service" type="button">🔧 ServiceBuch</button>
-          </div>
-        </div>
-      </div>
+      <h1>Tankbuch</h1>
       <div class="header-actions">
-        <button id="themeToggle" class="theme-btn" type="button" title="Theme wechseln">🌙</button>
-        <button id="logoutBtn" class="logout-btn" type="button" title="Abmelden">⎋</button>
+        <button class="theme-btn" id="themeToggle" title="Design umschalten">🌙</button>
+        <button class="logout-btn" id="logoutBtn" title="Abmelden" aria-label="Abmelden">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/>
+            <path d="M16 8l4 4-4 4"/>
+            <path d="M20 12H9"/>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- FAHRZEUGE (gemeinsam) -->
+    <!-- Fahrzeuge -->
     <section class="vehicles-section">
       <h2>Fahrzeuge</h2>
-      <div id="vehicleTabs" class="vehicle-tabs"></div>
+      <div class="vehicle-tabs" id="vehicleTabs"></div>
     </section>
 
-    <!-- TANKBUCH -->
-    <section id="tankSection" class="entries-section">
+    <!-- Tankbelege -->
+    <section class="entries-section">
       <div class="section-header">
         <h2 class="section-title-inline">Tankbelege</h2>
-        <button id="openEntrySheet" class="fab-btn" type="button" title="Neuer Tankbeleg">+</button>
+        <button class="fab-btn" id="openEntrySheet" title="Neuer Beleg" aria-label="Neuer Beleg">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
       </div>
-      <div id="status" class="status-bar"></div>
-      <div id="entriesList" class="entries-table-wrap"></div>
-      <div id="emptyState" class="empty-state" style="display:none;">Kein Fahrzeug ausgewählt.</div>
+      <div class="status-bar" id="status"></div>
+      <div class="entries-table-wrap" id="entriesList"></div>
+      <div class="empty-state" id="emptyState">Kein Fahrzeug ausgewählt.</div>
     </section>
-
-    <!-- SERVICEBUCH -->
-    <section id="serviceSection" class="entries-section" style="display:none;">
-
-      <!-- Übersicht -->
-      <div class="service-overview">
-        <div class="service-card">
-          <div class="service-card-icon">🛡</div>
-          <div class="service-card-content">
-            <div class="service-card-title">TÜV</div>
-            <div class="service-card-row">Letzter: <span id="tuvLast">–</span></div>
-            <div class="service-card-row">Nächster: <span id="tuvNext">–</span></div>
-          </div>
-        </div>
-        <div class="service-card">
-          <div class="service-card-icon">🛢</div>
-          <div class="service-card-content">
-            <div class="service-card-title">Ölwechsel</div>
-            <div class="service-card-row">Letzter: <span id="oilLast">–</span></div>
-            <div class="service-card-row">Nächster: <span id="oilNext">–</span></div>
-          </div>
-        </div>
-        <div class="service-card">
-          <div class="service-card-icon">📝</div>
-          <div class="service-card-content">
-            <div class="service-card-title">Bemerkung</div>
-            <textarea id="bemerkungField" class="bemerkung-textarea"
-                      placeholder="Sonstiges hinterlegen …"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabelle -->
-      <div class="section-header">
-        <h2 class="section-title-inline">Serviceeinträge</h2>
-        <button id="openServiceSheet" class="fab-btn" type="button" title="Neuer Serviceeintrag">+</button>
-      </div>
-      <div id="serviceStatus" class="status-bar"></div>
-      <div id="serviceList" class="entries-table-wrap"></div>
-      <div id="serviceEmpty" class="empty-state" style="display:none;">Noch keine Einträge für dieses Fahrzeug.</div>
-
-    </section>
-
   </div>
 
-  <!-- ================= TANKBUCH BOTTOM SHEET ================= -->
-  <div id="entrySheetOverlay" class="sheet-overlay" style="display:none;">
-    <div id="entrySheet" class="bottom-sheet">
-      <button id="sheetClose" class="sheet-close" type="button">✕</button>
+  <!-- ================= BOTTOM SHEET (Neuer Tankbeleg) ================= -->
+  <div class="sheet-overlay" id="entrySheetOverlay" style="display:none">
+    <div class="bottom-sheet" id="entrySheet">
       <div class="sheet-grabber"></div>
+      <button class="sheet-close" id="sheetClose" type="button">✕</button>
       <h3>Neuer Tankbeleg</h3>
-      <form id="entryForm" class="sheet-form">
+
+      <form class="sheet-form" id="entryForm">
+        <!-- 1 Spalte -->
         <label class="full">Datum
-          <input type="date" id="fDatum" required>
+          <input type="date" id="fDatum" />
         </label>
-        <label>km-Stand
-          <input type="number" id="fKm" placeholder="z. B. 85000" step="1" required>
+
+        <label class="full">km-Stand
+          <input type="number" inputmode="numeric" id="fKm" />
         </label>
+
+        <!-- 2 Spalten: Menge | €/Liter (Kommazahl erlaubt) -->
         <label>Liter (Menge)
-          <input type="text" id="fMenge" placeholder="z. B. 52,5" inputmode="decimal" required>
+          <input type="text" inputmode="decimal" id="fMenge" />
         </label>
         <label>€ / Liter
-          <input type="text" id="fPreis" placeholder="z. B. 1,79" inputmode="decimal" required>
+          <input type="text" inputmode="decimal" id="fPreis" />
         </label>
+
+        <!-- 2 Spalten: Reifen | Tankart -->
         <label>Reifen (Radgröße)
           <select id="fRadae">
             <option value="Sommer">Sommer</option>
@@ -141,48 +107,12 @@
             <option value="false">Teiltankung</option>
           </select>
         </label>
-        <label class="full">Bemerkung
-          <input type="text" id="fBemerkung" placeholder="Optional">
-        </label>
-        <button type="submit" class="sheet-submit">Speichern</button>
-      </form>
-    </div>
-  </div>
 
-  <!-- ================= SERVICEBUCH BOTTOM SHEET ================= -->
-  <div id="serviceSheetOverlay" class="sheet-overlay" style="display:none;">
-    <div id="serviceSheet" class="bottom-sheet">
-      <button id="serviceSheetClose" class="sheet-close" type="button">✕</button>
-      <div class="sheet-grabber"></div>
-      <h3>Neuer Serviceeintrag</h3>
-      <form id="serviceForm" class="sheet-form">
-        <label>Datum
-          <input type="date" id="sDatum" required>
-        </label>
-        <label>Zieldatum
-          <input type="date" id="sZieldatum">
-        </label>
-        <label>km-Stand
-          <input type="number" id="sKm" placeholder="z. B. 85000" step="1" required>
-        </label>
-        <label>Ziel-km
-          <input type="number" id="sZielKm" placeholder="z. B. 90000" step="1">
-        </label>
-        <label class="full">Kategorie
-          <input type="text" id="sKategorie" list="kategorieList"
-                 placeholder="z. B. TÜV, Öl, Reifen …" required>
-          <datalist id="kategorieList">
-            <option value="Reifen"></option>
-            <option value="Motor"></option>
-            <option value="Öl"></option>
-            <option value="TÜV"></option>
-            <option value="Bremse"></option>
-          </datalist>
-        </label>
+        <!-- 1 Spalte -->
         <label class="full">Bemerkung
-          <textarea id="sBemerkung" rows="4"
-                    placeholder="z. B. Knarzgeräusch an der Vorderachse …"></textarea>
+          <input type="text" id="fBemerkung" placeholder="optional" />
         </label>
+
         <button type="submit" class="sheet-submit">Speichern</button>
       </form>
     </div>
