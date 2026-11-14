@@ -30,11 +30,25 @@
   <!-- ================= APP ================= -->
   <div id="appScreen" style="display:none">
     <header class="app-header">
-      <h1>Tankbuch</h1>
+      <!-- Dropdown: Tankbuch / Servicebuch (R2) -->
+      <div class="title-dropdown">
+        <button class="title-btn" id="viewToggleBtn" aria-haspopup="true">
+          <span id="viewTitle">⛽ Tankbuch</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="viewMenu">
+          <button class="dropdown-item active" data-view="tank">⛽ Tankbuch</button>
+          <button class="dropdown-item" data-view="service">🔧 Servicebuch</button>
+        </div>
+      </div>
       <div class="header-actions">
         <button class="theme-btn" id="themeToggle" title="Design umschalten">🌙</button>
+        <!-- T2: Logout-Symbol 24 px, passend zum 40-px-Kreis -->
         <button class="logout-btn" id="logoutBtn" title="Abmelden" aria-label="Abmelden">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M14 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/>
             <path d="M16 8l4 4-4 4"/>
@@ -50,10 +64,32 @@
       <div class="vehicle-tabs" id="vehicleTabs"></div>
     </section>
 
-    <!-- Tankbelege -->
+    <!-- Servicebuch: Grunddaten (Ü1–Ü3) -->
+    <section class="service-overview" id="serviceOverview" hidden>
+      <h2>Grunddaten</h2>
+      <div class="overview-cards">
+        <div class="overview-card">
+          <h3>🔎 TÜV</h3>
+          <div class="overview-row"><span class="ov-label">Letzter</span><span id="ovTuvLast">–</span></div>
+          <div class="overview-row"><span class="ov-label">Nächster</span><span id="ovTuvNext">–</span></div>
+        </div>
+        <div class="overview-card">
+          <h3>🛢️ Ölwechsel</h3>
+          <div class="overview-row"><span class="ov-label">Letzter</span><span id="ovOilLast">–</span></div>
+          <div class="overview-row"><span class="ov-label">Nächster</span><span id="ovOilNext">–</span></div>
+        </div>
+      </div>
+      <div class="overview-remark">
+        <label for="fRemark">Bemerkung (Sonstiges)</label>
+        <textarea id="fRemark" rows="3" placeholder="z. B. fremdes Geräusch, defekte Lampe, abgefahrene Reifen …"></textarea>
+        <div class="overview-remark-status" id="remarkStatus"></div>
+      </div>
+    </section>
+
+    <!-- Tankbelege / Servicedaten -->
     <section class="entries-section">
       <div class="section-header">
-        <h2 class="section-title-inline">Tankbelege</h2>
+        <h2 class="section-title-inline" id="entriesTitle">Tankbelege</h2>
         <button class="fab-btn" id="openEntrySheet" title="Neuer Beleg" aria-label="Neuer Beleg">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
@@ -111,6 +147,47 @@
         <!-- 1 Spalte -->
         <label class="full">Bemerkung
           <input type="text" id="fBemerkung" placeholder="optional" />
+        </label>
+
+        <button type="submit" class="sheet-submit">Speichern</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= BOTTOM SHEET (Neuer Serviceeintrag) ================= -->
+  <div class="sheet-overlay" id="serviceSheetOverlay" style="display:none">
+    <div class="bottom-sheet" id="serviceSheet">
+      <div class="sheet-grabber"></div>
+      <button class="sheet-close" id="serviceSheetClose" type="button">✕</button>
+      <h3>Neuer Serviceeintrag</h3>
+
+      <form class="sheet-form" id="serviceForm">
+        <label class="full">Datum
+          <input type="date" id="sDatum" />
+        </label>
+
+        <label class="full">km-Stand
+          <input type="number" inputmode="numeric" id="sKm" />
+        </label>
+
+        <label class="full">Kategorie (pro Eintrag eine)
+          <select id="sKategorie"></select>
+        </label>
+
+        <label class="full" id="sCustomKatWrap" style="display:none">Eigene Kategorie (Schlagwort)
+          <input type="text" id="sCustomKat" placeholder="z. B. Kupplung, Anhängerkupplung" />
+        </label>
+
+        <!-- Optional: Ziel-Werte für die "Nächster"-Anzeige (TÜV / Öl) -->
+        <label>Ziel-Datum (optional)
+          <input type="date" id="sZieldatum" />
+        </label>
+        <label>Ziel-km (optional)
+          <input type="number" inputmode="numeric" id="sZielKm" />
+        </label>
+
+        <label class="full">Bemerkung
+          <textarea id="sBemerkung" rows="4" placeholder="optional"></textarea>
         </label>
 
         <button type="submit" class="sheet-submit">Speichern</button>
