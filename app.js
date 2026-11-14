@@ -127,11 +127,20 @@ function parseNum(raw) {
   return n;
 }
 
-// Durchschnittsverbrauch (l/100 km) über alle Belege eines Fahrzeugs
+// Durchschnittsverbrauch (l/100 km) über alle gültigen Beleg-Segmente eines
+// Fahrzeugs. Gewichteter Gesamtwert: Summe(Kraftstoff) / Summe(km) der
+// gültigen Segmente, dadurch werden auch Teiltankungs-Segmente korrekt
+// berücksichtigt (nicht nur der Mittel der Einzelwerte).
 function avgOf(entries) {
   const rows = computeWithConsumption(entries);
-  const valid = rows.filter(r => r.cons != null);
+  const valid = rows.filter(r => r.cons != null && r.distance > 0);
   if (!valid.length) return null;
+  const totalDist = valid.reduce((s, r) => s + r.distance, 0);
+  const totalFuel = valid.reduce((s, r) => s + (r.segFuel || 0), 0);
+  if (totalDist > 0 && totalFuel > 0) {
+    return (totalFuel / totalDist) * 100;
+  }
+  // Fallback (Kraftstoff nicht bestimmbar): einfacher Mittel der Segmente
   return valid.reduce((s, r) => s + r.cons, 0) / valid.length;
 }
 
@@ -158,7 +167,7 @@ async function loadVehicles() {
 async function loadAvgForAllVehicles() {
   const { data, error } = await supabase
     .from(TBL_BE)
-    .select("fahrzeug_id, datum, km, menge, preis");
+    .select("fahrzeug_id, datum, km, menge, preis, voll");
   if (error) return;
   const byVehicle = {};
   for (const e of (data || [])) {
@@ -205,23 +214,45 @@ async function selectVehicle(id) {
 }
 
 // ================= BELEGE – Echte Tabelle, kompakt, 1 Zeile pro Beleg =================
+//
+// Verbrauch nach dem "Volltank-Verfahren":
+// - Ein gültiger Verbrauch ist erst zwischen zwei VOLLEN Tankungen möglich.
+// - Referenz = km-Stand der letzten VOLL-Tankung.
+// - TEIL-Tankungen zwischendurch werden akkumuliert (Menge + Kosten), da ihr
+//   Kraftstoff über das Segment ebenfalls verfahren wird. Sie zeigen selbst
+//   keinen Verbrauch (–), weil dort kein geschlossener Referenzpunkt liegt.
+// - Bei VOLL: Verbrauch = (akkumuliert + aktuelle Menge) / (km − Referenz-km) × 100,
+//   danach Referenz auf aktuellen km setzen, Akkumulation leeren.
+// - Bei VOLL ohne vorherige Referenz (erste Zeile / Lücke): kein Verbrauch,
+//   Referenz setzen, zuvor Akkumuliertes verwerfen.
 function computeWithConsumption(entries) {
   const sorted = [...entries].sort((a, b) => {
     if (a.datum !== b.datum) return a.datum < b.datum ? -1 : 1;
     if (a.km !== b.km)       return a.km - b.km;
     return (a.created_at || "") < (b.created_at || "") ? -1 : 1;
   });
-  let prevKm = null;
+  let refKm = null;   // km-Stand der letzten VOLL-Tankung
+  let pendFuel = 0;   // akkumulierte Teilmengen seit letzter VOLL-Tankung
+  let pendCost = 0;   // akkumulierte Teilkosten seit letzter VOLL-Tankung
   return sorted.map(e => {
-    let cons = null, cost100 = null, distance = null;
-    if (prevKm !== null && e.km > prevKm) {
-      distance = e.km - prevKm;
-      if (e.menge > 0) cons   = (e.menge / distance) * 100;
-      if (e.menge > 0 && e.preis > 0)
-        cost100 = (e.menge * e.preis) / distance * 100;
+    let cons = null, cost100 = null, distance = null, segFuel = null;
+    if (e.voll) {
+      if (refKm !== null && e.km > refKm) {
+        distance = e.km - refKm;
+        const fuel = pendFuel + e.menge;
+        segFuel = fuel;
+        if (fuel > 0) cons = (fuel / distance) * 100;
+        if (fuel > 0) cost100 = (pendCost + e.menge * e.preis) / distance * 100;
+      }
+      refKm = e.km;
+      pendFuel = 0;
+      pendCost = 0;
+    } else {
+      // Teiltankung: nur akkumulieren, eigener Verbrauch nicht bestimmbar
+      pendFuel += e.menge;
+      pendCost += e.menge * (e.preis || 0);
     }
-    prevKm = e.km;
-    return { ...e, distance, cons, cost100 };
+    return { ...e, distance, cons, cost100, segFuel };
   });
 }
 
