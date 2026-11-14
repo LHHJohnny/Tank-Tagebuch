@@ -6,25 +6,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TBL_FZ = "fahrzeuge";
 const TBL_BE = "belege";
-const TBL_SERV = "service_eintraege";
-const TBL_REMARK = "service_bemerkungen";
-
-const VIEW_NAMES = { tank: "⛽ Tankbuch", service: "🔧 Servicebuch" };
-const BASE_CATEGORIES = ["Reifen", "Motor", "Öl", "TÜV", "Bremse"];
-// Fahrzeugtypen, die im Tankbuch NICHT auswählbar sein dürfen (R6).
-// Falls auch "Fahrrad" ausgeblendet werden soll, hier "fahrrad" ergänzen.
-const NON_TANK_TYPES = ["anhaenger"];
 
 const $ = (id) => document.getElementById(id);
-const state = {
-  view: "tank",          // "tank" | "service"
-  vehicles: [],
-  activeVehicleId: null,
-  entries: [],           // Tankbelege aktives Fahrzeug
-  serviceEntries: [],    // Servicedaten aktives Fahrzeug
-  remark: "",            // Bemerkung (Sonstiges) aktives Fahrzeug
-  avgByVehicle: {},
-};
+const state = { vehicles: [], activeVehicleId: null, entries: [], avgByVehicle: {} };
 
 // ================= DARK MODE (standardmäßig dunkel) =================
 const themeToggleEl = $("themeToggle");
@@ -113,61 +97,11 @@ function closeSheet() {
   sheetOverlay.style.display = "none";
 }
 
-openSheetBtn.addEventListener("click", () => {
-  if (state.view === "tank") openSheet(); else openServiceSheet();
-});
+openSheetBtn.addEventListener("click", openSheet);
 sheetCloseBtn.addEventListener("click", closeSheet);
 sheetOverlay.addEventListener("click", (e) => {
   if (e.target === sheetOverlay) closeSheet();
 });
-
-// ================= VIEW-UMSCHALTDROPDOWN (Tankbuch / Servicebuch) =================
-const viewToggleBtn = $("viewToggleBtn");
-const viewMenuEl    = $("viewMenu");
-const viewTitleEl   = $("viewTitle");
-
-viewToggleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  viewMenuEl.classList.toggle("open");
-});
-
-document.addEventListener("click", (e) => {
-  if (!viewMenuEl.contains(e.target)) viewMenuEl.classList.remove("open");
-});
-
-viewMenuEl.querySelectorAll(".dropdown-item").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    viewMenuEl.classList.remove("open");
-    setView(btn.dataset.view);
-  });
-});
-
-function markViewMenu() {
-  viewMenuEl.querySelectorAll(".dropdown-item").forEach((b) =>
-    b.classList.toggle("active", b.dataset.view === state.view));
-}
-
-function setView(view) {
-  if (view === state.view) return;
-  state.view = view;
-  viewTitleEl.textContent = VIEW_NAMES[view];
-  document.title = VIEW_NAMES[view];
-  markViewMenu();
-
-  const serviceMode = view === "service";
-  $("serviceOverview").hidden = !serviceMode;
-  $("entriesTitle").textContent = serviceMode ? "Servicedaten" : "Tankbelege";
-  const fab = $("openEntrySheet");
-  fab.title = serviceMode ? "Neuer Serviceeintrag" : "Neuer Beleg";
-  fab.setAttribute("aria-label", fab.title);
-
-  const allowed = visibleVehicles();
-  if (!allowed.find((v) => v.id === state.activeVehicleId)) {
-    state.activeVehicleId = allowed.length ? allowed[0].id : null;
-  }
-  if (state.activeVehicleId) selectVehicle(state.activeVehicleId);
-  else renderEmpty("Noch kein Fahrzeug vorhanden.");
-}
 
 // ================= FAHRZEUGE (Auswahl) =================
 const vehicleTabsEl = $("vehicleTabs");
@@ -210,15 +144,6 @@ function avgOf(entries) {
   return valid.reduce((s, r) => s + r.cons, 0) / valid.length;
 }
 
-function normTyp(t) { return String(t || "wagen").toLowerCase().trim(); }
-
-function visibleVehicles() {
-  if (state.view === "tank") {
-    return state.vehicles.filter((v) => !NON_TANK_TYPES.includes(normTyp(v.typ)));
-  }
-  return state.vehicles;
-}
-
 async function loadVehicles() {
   const { data, error } = await supabase.from(TBL_FZ).select().order("name");
   if (error) { setStatus("Fehler: " + error.message, true); return; }
@@ -227,15 +152,15 @@ async function loadVehicles() {
   await loadAvgForAllVehicles();
 
   renderVehicleTabs();
-  const allowed = visibleVehicles();
-  if (allowed.length > 0) {
-    if (!state.activeVehicleId || !allowed.find(v => v.id === state.activeVehicleId)) {
-      state.activeVehicleId = allowed[0].id;
+  if (state.vehicles.length > 0) {
+    if (!state.activeVehicleId || !state.vehicles.find(v => v.id === state.activeVehicleId)) {
+      state.activeVehicleId = state.vehicles[0].id;
     }
     await selectVehicle(state.activeVehicleId);
   } else {
     state.activeVehicleId = null;
-    renderEmpty("Noch kein Fahrzeug vorhanden.");
+    emptyEl.style.display = "block";
+    emptyEl.textContent   = "Noch kein Fahrzeug vorhanden.";
   }
 }
 
@@ -256,23 +181,21 @@ async function loadAvgForAllVehicles() {
 
 function renderVehicleTabs() {
   vehicleTabsEl.innerHTML = "";
-  for (const v of visibleVehicles()) {
+  for (const v of state.vehicles) {
     const tab = document.createElement("div");
     tab.className = "vehicle-tab" + (v.id === state.activeVehicleId ? " active" : "");
 
     const name = document.createElement("span");
     name.className = "tab-name";
     name.textContent = v.name;
-    tab.appendChild(name);
 
-    // Servicebuch: nur Name, kein Ø-Verbrauch (A1.1)
-    if (state.view === "tank") {
-      const avg = document.createElement("span");
-      avg.className = "tab-avg";
-      const avgVal = state.avgByVehicle[v.id];
-      avg.textContent = avgVal != null ? "Ø " + fmt(avgVal) + " l/100 km" : "Ø –";
-      tab.appendChild(avg);
-    }
+    const avg = document.createElement("span");
+    avg.className = "tab-avg";
+    const avgVal = state.avgByVehicle[v.id];
+    avg.textContent = avgVal != null ? "Ø " + fmt(avgVal) + " l/100 km" : "Ø –";
+
+    tab.appendChild(name);
+    tab.appendChild(avg);
     tab.addEventListener("click", () => selectVehicle(v.id));
     vehicleTabsEl.appendChild(tab);
   }
@@ -281,17 +204,13 @@ function renderVehicleTabs() {
 async function selectVehicle(id) {
   state.activeVehicleId = id;
   renderVehicleTabs();
-  if (state.view === "tank") {
-    const { data, error } = await supabase.from(TBL_BE).select().eq("fahrzeug_id", id);
-    if (error) { setStatus("Fehler: " + error.message, true); return; }
-    state.entries = data || [];
-    renderEntries();
+  const { data, error } = await supabase.from(TBL_BE).select().eq("fahrzeug_id", id);
+  if (error) { setStatus("Fehler: " + error.message, true); return; }
+  state.entries = data || [];
+  renderEntries();
 
-    state.avgByVehicle[id] = avgOf(state.entries);
-    renderVehicleTabs();
-  } else {
-    await loadServiceData();
-  }
+  state.avgByVehicle[id] = avgOf(state.entries);
+  renderVehicleTabs();
 }
 
 // ================= BELEGE – Echte Tabelle, kompakt, 1 Zeile pro Beleg =================
@@ -456,283 +375,6 @@ function deleteEntry(id) {
   });
 }
 
-// ================= SERVICEBUCH – Daten laden =================
-async function loadServiceData() {
-  const id = state.activeVehicleId;
-  if (!id) { renderEmpty("Noch kein Fahrzeug vorhanden."); return; }
-
-  const [resEntries, resRemark] = await Promise.all([
-    supabase.from(TBL_SERV).select().eq("fahrzeug_id", id),
-    supabase.from(TBL_REMARK).select().eq("fahrzeug_id", id).maybeSingle(),
-  ]);
-  if (resEntries.error) { setStatus("Fehler: " + resEntries.error.message, true); return; }
-
-  state.serviceEntries = resEntries.data || [];
-  state.remark = resRemark.data ? (resRemark.data.text || "") : "";
-
-  const remarkEl = $("fRemark");
-  if (document.activeElement !== remarkEl) remarkEl.value = state.remark;
-  remarkDirty = false;
-  setRemarkStatus("");
-
-  renderOverview();
-  renderServiceEntries();
-}
-
-function renderEmpty(msg) {
-  emptyEl.style.display = "block";
-  emptyEl.textContent = msg;
-}
-
-// ================= SERVICEBUCH – Grunddaten-Karten (Ü1, Ü2) =================
-// Rein statisch: "Letzter" = neuer Eintrag der Kategorie,
-// "Nächster" = Ziel-Datum/Ziel-km desselben Eintrags. Es wird nichts berechnet (R3).
-function normKat(s) { return String(s || "").trim().toLowerCase(); }
-
-function latestServiceEntry(kat) {
-  const list = state.serviceEntries
-    .filter((e) => normKat(e.kategorie) === normKat(kat))
-    .sort((a, b) =>
-      a.datum !== b.datum ? (a.datum < b.datum ? -1 : 1) : (a.km || 0) - (b.km || 0));
-  return list.length ? list[list.length - 1] : null;
-}
-
-function overviewLast(entry) {
-  if (!entry) return "–";
-  const parts = [];
-  if (entry.datum) parts.push(fmtDate(entry.datum));
-  if (entry.km) parts.push(fmtKm(entry.km) + " km");
-  return parts.length ? parts.join(" · ") : "–";
-}
-
-function overviewNext(entry) {
-  if (!entry) return "–";
-  const parts = [];
-  if (entry.zieldatum) parts.push(fmtDate(entry.zieldatum));
-  if (entry.ziel_km) parts.push(fmtKm(entry.ziel_km) + " km");
-  return parts.length ? parts.join(" · ") : "–";
-}
-
-function renderOverview() {
-  const tuv = latestServiceEntry("TÜV");
-  const oil = latestServiceEntry("Öl");
-  $("ovTuvLast").textContent = overviewLast(tuv);
-  $("ovTuvNext").textContent = overviewNext(tuv);
-  $("ovOilLast").textContent = overviewLast(oil);
-  $("ovOilNext").textContent = overviewNext(oil);
-}
-
-// ================= SERVICEBUCH – Tabelle "Servicedaten" (B4, B5) =================
-const SVC_COLS = ["Datum", "km", "Kategorie", "Ziel", "Bemerkung", ""];
-
-function serviceTargetText(r) {
-  const parts = [];
-  if (r.zieldatum) parts.push(fmtDate(r.zieldatum));
-  if (r.ziel_km) parts.push(fmtKm(r.ziel_km) + " km");
-  return parts.length ? parts.join(" · ") : "–";
-}
-
-function renderServiceEntries() {
-  const listEl = $("entriesList");
-  listEl.innerHTML = "";
-  const rows = [...state.serviceEntries].sort((a, b) => {
-    if (a.datum !== b.datum) return a.datum < b.datum ? 1 : -1; // neueste oben
-    if ((a.km || 0) !== (b.km || 0)) return (b.km || 0) - (a.km || 0);
-    return (a.created_at || "") < (b.created_at || "") ? 1 : -1;
-  });
-
-  if (rows.length === 0) {
-    renderEmpty("Noch keine Servicedaten für dieses Fahrzeug.");
-    return;
-  }
-  emptyEl.style.display = "none";
-
-  const table = document.createElement("table");
-  table.className = "entry-table";
-
-  const thead = document.createElement("thead");
-  const hrow = document.createElement("tr");
-  SVC_COLS.forEach(txt => {
-    const th = document.createElement("th");
-    th.textContent = txt;
-    hrow.appendChild(th);
-  });
-  thead.appendChild(hrow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-
-  rows.forEach(r => {
-    const tr = document.createElement("tr");
-
-    const cells = [
-      fmtDate(r.datum),
-      fmtKm(r.km),
-      r.kategorie || "–",
-      serviceTargetText(r),
-      r.bemerkung || "",
-    ];
-
-    cells.forEach(text => {
-      const td = document.createElement("td");
-      td.textContent = text;
-      tr.appendChild(td);
-    });
-
-    const tdDel = document.createElement("td");
-    const delBtn = document.createElement("button");
-    delBtn.className = "entry-del";
-    delBtn.title = "Eintrag löschen";
-    delBtn.textContent = "✕";
-    delBtn.addEventListener("click", () => deleteServiceEntry(r.id));
-    tdDel.appendChild(delBtn);
-    tr.appendChild(tdDel);
-
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  listEl.appendChild(table);
-}
-
-function deleteServiceEntry(id) {
-  if (!confirm("Diesen Serviceeintrag löschen?")) return;
-  supabase.from(TBL_SERV).delete().eq("id", id).then(({ error }) => {
-    if (error) { setStatus("Fehler: " + error.message, true); return; }
-    setStatus("Eintrag gelöscht.");
-    loadServiceData();
-  });
-}
-
-// ================= SERVICEBUCH – Bemerkung "Sonstiges" (Ü3) =================
-// Pro Fahrzeug genau 1 Zeile in service_bemerkungen (Upsert).
-const remarkEl = $("fRemark");
-let remarkDirty = false;
-
-function setRemarkStatus(msg) {
-  const el = $("remarkStatus");
-  el.textContent = msg || "";
-  el.style.color = msg && msg.indexOf("Fehler") === 0 ? "var(--red)" : "";
-}
-
-remarkEl.addEventListener("input", () => {
-  if (remarkEl.value === (state.remark || "")) {
-    remarkDirty = false;
-    setRemarkStatus("");
-    return;
-  }
-  remarkDirty = true;
-  setRemarkStatus("Änderung erkannt – Feld verlassen zum Speichern");
-});
-
-remarkEl.addEventListener("blur", () => {
-  if (remarkDirty) saveRemark();
-});
-
-async function saveRemark() {
-  if (!state.activeVehicleId || !remarkDirty) return;
-  const text = remarkEl.value.trim() || "";
-  const { error } = await supabase.from(TBL_REMARK).upsert(
-    { fahrzeug_id: state.activeVehicleId, text: text, updated_at: new Date().toISOString() },
-    { onConflict: "fahrzeug_id" }
-  );
-  remarkDirty = false;
-  if (error) { setRemarkStatus("Fehler: " + error.message); return; }
-  state.remark = text;
-  setRemarkStatus("Gespeichert ✓");
-  setTimeout(() => { if (!remarkDirty) setRemarkStatus(""); }, 2500);
-}
-
-// ================= BOTTOM SHEET (Pop) für + Serviceeintrag =================
-const serviceSheetOverlay = $("serviceSheetOverlay");
-const serviceSheetCloseBtn = $("serviceSheetClose");
-const sKategorieSel = $("sKategorie");
-const sCustomKatWrap = $("sCustomKatWrap");
-
-function buildCategoryOptions() {
-  // Basis-Kategorien (B2) + bereits benutzte freie Schlagworte dieses Fahrzeugs
-  const cats = [...BASE_CATEGORIES];
-  for (const e of state.serviceEntries) {
-    const k = (e.kategorie || "").trim();
-    if (k && !cats.some((c) => normKat(c) === normKat(k))) cats.push(k);
-  }
-  sKategorieSel.innerHTML = "";
-  cats.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    sKategorieSel.appendChild(opt);
-  });
-  const custom = document.createElement("option");
-  custom.value = "__custom__";
-  custom.textContent = "Eigene Kategorie …";
-  sKategorieSel.appendChild(custom);
-}
-
-function syncCustomKat() {
-  sCustomKatWrap.style.display = sKategorieSel.value === "__custom__" ? "flex" : "none";
-}
-
-function openServiceSheet() {
-  serviceSheetOverlay.style.display = "flex";
-  const fDatum = $("sDatum");
-  if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
-  buildCategoryOptions();
-  syncCustomKat();
-  setTimeout(() => $("sKm").focus(), 100);
-}
-
-function closeServiceSheet() {
-  serviceSheetOverlay.style.display = "none";
-}
-
-sKategorieSel.addEventListener("change", syncCustomKat);
-serviceSheetCloseBtn.addEventListener("click", closeServiceSheet);
-serviceSheetOverlay.addEventListener("click", (e) => {
-  if (e.target === serviceSheetOverlay) closeServiceSheet();
-});
-
-function addServiceEntry(e) {
-  e.preventDefault();
-  if (!state.activeVehicleId) return;
-
-  const km = parseInt($("sKm").value, 10);
-  if (!km || km <= 0) {
-    setStatus("Bitte einen km-Stand eingeben (größer 0).", true);
-    return;
-  }
-
-  let kategorie = sKategorieSel.value;
-  if (kategorie === "__custom__") {
-    kategorie = $("sCustomKat").value.trim();
-    if (!kategorie) {
-      setStatus("Bitte die eigene Kategorie (Schlagwort) eingeben.", true);
-      return;
-    }
-  }
-
-  const zielKmRaw = parseInt($("sZielKm").value, 10);
-  const payload = {
-    fahrzeug_id: state.activeVehicleId,
-    datum:       $("sDatum").value || new Date().toISOString().slice(0, 10),
-    km:          km,
-    kategorie:   kategorie,
-    zieldatum:   $("sZieldatum").value || null,
-    ziel_km:     zielKmRaw > 0 ? zielKmRaw : null,
-    bemerkung:   $("sBemerkung").value.trim() || null,
-  };
-
-  supabase.from(TBL_SERV).insert(payload).then(({ error }) => {
-    if (error) { setStatus("Fehler: " + error.message, true); return; }
-    $("serviceForm").reset();
-    closeServiceSheet();
-    setStatus("Serviceeintrag gespeichert.");
-    loadServiceData();
-  });
-}
-
 // ================= INIT =================
 formEl.addEventListener("submit", addEntry);
-$("serviceForm").addEventListener("submit", addServiceEntry);
-markViewMenu();
 initAuth();
