@@ -9,6 +9,7 @@ const TBL_BE = "belege";
 
 const $ = (id) => document.getElementById(id);
 const state = { vehicles: [], activeVehicleId: null, entries: [], avgByVehicle: {} };
+let editingEntryId = null;
 
 // ================= DARK MODE (standardmäßig dunkel) =================
 const themeToggleEl = $("themeToggle");
@@ -77,27 +78,55 @@ loginFormEl.addEventListener("submit", async (e) => {
 
 logoutBtnEl.addEventListener("click", () => supabase.auth.signOut());
 
-// ================= BOTTOM SHEET (Pop) für + Beleg =================
+// ================= BOTTOM SHEET (Pop) für + Beleg / Ändern =================
 const sheetOverlay  = $("entrySheetOverlay");
 const sheetEl       = $("entrySheet");
 const openSheetBtn  = $("openEntrySheet");
 const sheetCloseBtn = $("sheetClose");
 
-function openSheet() {
+function openSheet(entryId = null) {
   sheetOverlay.style.display = "flex";
-  const fDatum = $("fDatum");
-  if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
-  // Letzte Reifenwahl wiederherstellen (predefined)
-  const lastRadae = localStorage.getItem("tankbuch-radae");
-  if (lastRadae) $("fRadae").value = lastRadae;
-  setTimeout(() => $("fKm").focus(), 100);
+  editingEntryId = entryId;
+
+  const fDatum     = $("fDatum");
+  const fKm        = $("fKm");
+  const fMenge     = $("fMenge");
+  const fPreis     = $("fPreis");
+  const fRadae     = $("fRadae");
+  const fVoll      = $("fVoll");
+  const fBemerkung = $("fBemerkung");
+  const titleEl    = sheetEl.querySelector("h3");
+
+  if (entryId) {
+    // --- Ändern ---
+    titleEl.textContent = "Beleg ändern";
+    const entry = state.entries.find(e => e.id === entryId);
+    if (entry) {
+      fDatum.value     = entry.datum || "";
+      fKm.value        = entry.km != null ? entry.km : "";
+      fMenge.value     = entry.menge != null ? entry.menge : "";
+      fPreis.value     = entry.preis != null ? entry.preis : "";
+      fRadae.value     = entry.radae || "";
+      fVoll.value      = entry.voll ? "true" : "false";
+      fBemerkung.value = entry.bemerkung || "";
+    }
+  } else {
+    // --- Neu anlegen ---
+    titleEl.textContent = "Neuer Tankbeleg";
+    if (!fDatum.value) fDatum.value = new Date().toISOString().slice(0, 10);
+    const lastRadae = localStorage.getItem("tankbuch-radae");
+    if (lastRadae) fRadae.value = lastRadae;
+  }
+
+  setTimeout(() => fKm.focus(), 100);
 }
 
 function closeSheet() {
   sheetOverlay.style.display = "none";
+  editingEntryId = null;
 }
 
-openSheetBtn.addEventListener("click", openSheet);
+openSheetBtn.addEventListener("click", () => openSheet(null));
 sheetCloseBtn.addEventListener("click", closeSheet);
 sheetOverlay.addEventListener("click", (e) => {
   if (e.target === sheetOverlay) closeSheet();
@@ -264,7 +293,7 @@ function fmtDate(iso) {
   });
 }
 
-const COLS = ["Datum", "km", "l", "l/100", "€/100", "€/l", "Reifen", "Tankart", "Bemerkung", ""];
+const COLS = ["Datum", "km", "Δ km", "l", "l/100", "€/100", "€/l", "Reifen", "Tankart", "Bemerkung", ""];
 
 function renderEntries() {
   const listEl = $("entriesList");
@@ -299,6 +328,7 @@ function renderEntries() {
     const cells = [
       fmtDate(r.datum),
       fmtKm(r.km),
+      r.distance != null ? fmtKm(r.distance) : "–",
       Number(r.menge).toFixed(1),
       fmt(r.cons),
       fmt(r.cost100, 2),
@@ -314,14 +344,25 @@ function renderEntries() {
       tr.appendChild(td);
     });
 
-    const tdDel = document.createElement("td");
+    // Aktionen: Ändern + Löschen
+    const tdActions = document.createElement("td");
+    tdActions.className = "actions";
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "entry-edit";
+    editBtn.title = "Beleg ändern";
+    editBtn.textContent = "✏️";
+    editBtn.addEventListener("click", () => openSheet(r.id));
+    tdActions.appendChild(editBtn);
+
     const delBtn = document.createElement("button");
     delBtn.className = "entry-del";
     delBtn.title = "Beleg löschen";
     delBtn.textContent = "✕";
     delBtn.addEventListener("click", () => deleteEntry(r.id));
-    tdDel.appendChild(delBtn);
-    tr.appendChild(tdDel);
+    tdActions.appendChild(delBtn);
+
+    tr.appendChild(tdActions);
 
     tbody.appendChild(tr);
   });
@@ -357,11 +398,15 @@ function addEntry(e) {
   // Letzte Reifenwahl merken, fürs nächste Mal
   try { localStorage.setItem("tankbuch-radae", payload.radae); } catch (_) {}
 
-  supabase.from(TBL_BE).insert(payload).then(({ error }) => {
+  const query = editingEntryId
+    ? supabase.from(TBL_BE).update(payload).eq("id", editingEntryId)
+    : supabase.from(TBL_BE).insert(payload);
+
+  query.then(({ error }) => {
     if (error) { setStatus("Fehler: " + error.message, true); return; }
     formEl.reset();
     closeSheet();
-    setStatus("Beleg gespeichert.");
+    setStatus(editingEntryId ? "Beleg aktualisiert." : "Beleg gespeichert.");
     selectVehicle(state.activeVehicleId);
   });
 }
